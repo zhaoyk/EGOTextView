@@ -359,10 +359,13 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     _font = [font retain];
     [oldFont release];
     
-    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);  
-    NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(id)ctFont, (NSString *)kCTFontAttributeName, (id)[UIColor blackColor].CGColor, kCTForegroundColorAttributeName, nil];
+    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);
+    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+    [dictionary setValue:(id)ctFont forKey:(NSString *)kCTFontAttributeName];
+    [dictionary setValue:(id)[UIColor blackColor].CGColor forKey:(NSString *)kCTForegroundColorAttributeName];
+    NSNumber *kern = [NSNumber numberWithFloat:0];
+    [dictionary setValue:kern forKey:(id)kCTKernAttributeName];
     self.defaultAttributes = dictionary;
-    [dictionary release];
     CFRelease(ctFont);        
     
     [self textChanged];
@@ -841,7 +844,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
         CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
-        NSRange range = NSMakeRange(range.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
+        NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
                 
         if (index >= range.location && index <= range.location+range.length) {
 
@@ -1127,7 +1130,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
-        
+    if (selectedRange.location == 0 && selectedRange.length == 0 && markedText.length == 0) {
+        // there is another markedText(@""), selectedRange(0, 0) after input non-english workds
+        return;
+    }
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
     
@@ -1156,7 +1162,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
     
-    self.attributedString = _attributedString;
+    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;    
     
@@ -2281,7 +2287,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     pos.index = index;
     return [pos autorelease];
 }
-
+- (NSString *)description {
+    return [NSString stringWithFormat:@"index: %d", self.index];
+}
 @end
 
 
@@ -2313,7 +2321,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 -(BOOL)isEmpty {
     return (self.range.length == 0);
 }
-
+- (NSString *)description {
+    return [NSString stringWithFormat:@"range: %@", NSStringFromRange(self.range)];
+}
 @end
 
 
