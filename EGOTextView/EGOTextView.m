@@ -393,7 +393,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     NSRange range = NSMakeRange(0, _attributedString.string.length);
     if (!_editing && !_editable) {
         [self checkLinksForRange:range];
-        [self scanAttachments];
+//        [self scanAttachments];
     }
     
     [self textChanged];
@@ -596,7 +596,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex((CFArrayRef)lines, i);
         CGContextSetTextPosition(ctx, frameRect.origin.x + origins[i].x, frameRect.origin.y + origins[i].y);
         CTLineDraw(line, ctx);
-        
         CFArrayRef runs = CTLineGetGlyphRuns(line);
         CFIndex runsCount = CFArrayGetCount(runs);
         for (CFIndex runsIndex = 0; runsIndex < runsCount; runsIndex++) {
@@ -828,7 +827,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         free(origins);
         
         origin.y -= self.font.leading;
-        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
+        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, ceilf((descent) + ascent));
         
     }
 
@@ -863,7 +862,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
             }
             
-            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
+            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, ceilf((descent) + ascent));
 
         } 
         
@@ -1434,6 +1433,85 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
     }
   
+}
+
+- (NSString *)realString {
+    NSString *realString = [NSString stringWithString:self.attributedString.string];
+
+    NSMutableString *s = [[NSMutableString alloc] init];
+    __block NSUInteger index = 0;
+
+    [self.attributedString enumerateAttribute:EGOTextAttachmentAttributeName inRange:NSMakeRange(0, self.attributedString.length) options:0 usingBlock:^(id value, NSRange range, BOOL *stop) {
+        if (value != nil) {
+            if (range.location > index) {
+                [s appendString:[realString substringWithRange:NSMakeRange(index, range.location - index)]];
+            }
+            id<EGOTextAttachmentCell> cell = value;
+            [s appendString:[NSString stringWithFormat:@"[%@]", [cell placeHolderString]]];
+            index = range.location + range.length;
+        }
+    }];
+    if (index < realString.length) {
+        [s appendString:[realString substringFromIndex:index]];
+    }
+    return s;
+}
+
+- (void)addAttachmentCell:(id<EGOTextAttachmentCell>)cell {
+    NSRange selectedNSRange = self.selectedRange;
+    NSRange markedTextRange = self.markedRange;
+    
+    [_mutableAttributedString setAttributedString:self.attributedString];
+    
+    CTRunDelegateCallbacks callbacks = {
+        .version = kCTRunDelegateVersion1,
+        .dealloc = AttachmentRunDelegateDealloc,
+        .getAscent = AttachmentRunDelegateGetDescent,
+        //.getDescent = AttachmentRunDelegateGetDescent,
+        .getWidth = AttachmentRunDelegateGetWidth
+    };
+    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, [cell retain]);
+    NSMutableDictionary *attributes = [NSMutableDictionary dictionaryWithObject:(id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
+    [attributes setObject:cell forKey:EGOTextAttachmentAttributeName];
+    NSAttributedString *newString = [[NSAttributedString alloc] initWithString:EGOTextAttachmentPlaceholderString attributes:attributes];
+    CFRelease(runDelegate);
+    
+    if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
+        
+        [_mutableAttributedString replaceCharactersInRange:self.correctionRange withAttributedString:newString];
+        selectedNSRange.length = 0;
+        selectedNSRange.location = (self.correctionRange.location+1);
+        self.correctionRange = NSMakeRange(NSNotFound, 0);
+        
+    } else if (markedTextRange.location != NSNotFound) {
+        
+        [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
+        selectedNSRange.location = markedTextRange.location + 1;
+        selectedNSRange.length = 0;
+        markedTextRange = NSMakeRange(NSNotFound, 0);
+        
+        
+    } else if (selectedNSRange.length > 0) {
+        
+        [_mutableAttributedString replaceCharactersInRange:selectedNSRange withAttributedString:newString];
+        selectedNSRange.length = 0;
+        selectedNSRange.location = (selectedNSRange.location + 1);
+        
+        
+    } else {
+        
+        [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];
+        selectedNSRange.location += 1;
+        
+    }
+    
+    [newString release];
+    
+    self.attributedString = _mutableAttributedString;
+//    [self scanAttachments];
+    
+    self.markedRange = markedTextRange;
+    self.selectedRange = selectedNSRange;
 }
 
 - (void)deleteBackward  {
@@ -2341,7 +2419,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
         self.userInteractionEnabled = NO;
         self.layer.geometryFlipped = YES;
-        self.backgroundColor = [UIColor whiteColor];
+        self.backgroundColor = [UIColor clearColor];
         
     }
     return self;

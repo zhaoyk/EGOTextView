@@ -8,6 +8,7 @@
 
 #import "EGOTextView_DemoViewController.h"
 #import "EGOTextView.h"
+#import "EGOEmojiAttachmentCell.h"
 
 #import <QuartzCore/QuartzCore.h>
 
@@ -41,7 +42,8 @@
     
     if (_egoTextView==nil) {
         
-        EGOTextView *view = [[EGOTextView alloc] initWithFrame:self.view.bounds];
+        EGOTextView *view = [[EGOTextView alloc] initWithFrame:CGRectMake(10, 10, 300, 200)];
+        view.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1];
         view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         view.delegate = (id<EGOTextViewDelegate>)self;
         [self.view addSubview:view];
@@ -52,7 +54,16 @@
     }
      
     [segment setSelectedSegmentIndex:1];
-
+    
+    UIButton *left = [UIButton buttonWithType:UIButtonTypeContactAdd];
+    [left addTarget:self action:@selector(btClick) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *leftItem = [[UIBarButtonItem alloc] initWithCustomView:left];
+    self.navigationItem.leftBarButtonItem = leftItem;
+    
+    UIButton *right = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
+    [right addTarget:self action:@selector(rbtClick) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *rightItem = [[UIBarButtonItem alloc] initWithCustomView:right];
+    self.navigationItem.rightBarButtonItem = rightItem;
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
@@ -81,6 +92,27 @@
     
 }
 
+- (void)btClick {
+//    self.egoTextView.attributedString
+    UIFont *font = self.egoTextView.font;
+//    NSLog(@"pointSize: %f", font.pointSize);
+//    NSLog(@"capHeight: %f", font.capHeight);
+//    NSLog(@"lineHeight: %f", font.lineHeight);
+//    NSLog(@"ascender: %f", font.ascender);
+//    NSLog(@"descender: %f", font.descender);
+//    NSLog(@"xHeight: %f", font.xHeight);
+//    NSLog(@"leading: %f", font.leading);
+    EGOEmojiAttachmentCell *cell = [EGOEmojiAttachmentCell cellWithName:@"emotion11"];
+    cell.width = font.pointSize;
+    cell.height = font.pointSize;
+    cell.offsetY = ABS(font.descender * 0.5);
+    [self.egoTextView addAttachmentCell:cell];
+}
+
+- (void)rbtClick {
+    //    self.egoTextView.attributedString
+    NSLog(@"%@", [self.egoTextView realString]);
+}
 
 #pragma mark -
 #pragma mark EGOTextViewDelegate

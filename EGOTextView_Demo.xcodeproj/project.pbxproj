@@ -28,6 +28,8 @@
 		03FF5EEE135CA4DA00268656 /* EGOTextView.m in Sources */ = {isa = PBXBuildFile; fileRef = 03FF5EED135CA4DA00268656 /* EGOTextView.m */; };
 		03FF5EFB135CA6AC00268656 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5EFA135CA6AC00268656 /* QuartzCore.framework */; };
 		03FF5EFD135CA6B200268656 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5EFC135CA6B200268656 /* CoreText.framework */; };
+		7D04CBFC18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 7D04CBFB18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.m */; };
+		7D04CBFE18DC0DB100E72CD1 /* emotion11.png in Resources */ = {isa = PBXBuildFile; fileRef = 7D04CBFD18DC0DB100E72CD1 /* emotion11.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +60,9 @@
 		03FF5EED135CA4DA00268656 /* EGOTextView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EGOTextView.m; sourceTree = "<group>"; };
 		03FF5EFA135CA6AC00268656 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		03FF5EFC135CA6B200268656 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		7D04CBFA18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EGOEmojiAttachmentCell.h; sourceTree = "<group>"; };
+		7D04CBFB18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EGOEmojiAttachmentCell.m; sourceTree = "<group>"; };
+		7D04CBFD18DC0DB100E72CD1 /* emotion11.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = emotion11.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,9 +163,12 @@
 		03FF5EEB135CA4AC00268656 /* EGOTextView */ = {
 			isa = PBXGroup;
 			children = (
+				7D04CBFD18DC0DB100E72CD1 /* emotion11.png */,
 				03CDA261135DF850003B567F /* Resources */,
 				03FF5EEC135CA4DA00268656 /* EGOTextView.h */,
 				03FF5EED135CA4DA00268656 /* EGOTextView.m */,
+				7D04CBFA18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.h */,
+				7D04CBFB18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.m */,
 			);
 			path = EGOTextView;
 			sourceTree = "<group>";
@@ -228,6 +236,7 @@
 				03C94662135E90E000EF024B /* drag-dot@2x.png in Resources */,
 				03644E9213611C720015EC74 /* magnifier-ranged-hi@2x.png in Resources */,
 				03644E9313611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png in Resources */,
+				7D04CBFE18DC0DB100E72CD1 /* emotion11.png in Resources */,
 				03644E9413611C720015EC74 /* magnifier-ranged-lo@2x.png in Resources */,
 				03644E9513611C720015EC74 /* magnifier-ranged-mask@2x.png in Resources */,
 				031317AE13D50A5F00F8B414 /* MainWindow-iPad.xib in Resources */,
@@ -245,6 +254,7 @@
 				03FF5EDC135CA49D00268656 /* EGOTextView_DemoAppDelegate.m in Sources */,
 				03FF5EE2135CA49E00268656 /* EGOTextView_DemoViewController.m in Sources */,
 				03FF5EEE135CA4DA00268656 /* EGOTextView.m in Sources */,
+				7D04CBFC18DC0C0D00E72CD1 /* EGOEmojiAttachmentCell.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

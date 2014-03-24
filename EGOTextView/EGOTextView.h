@@ -50,8 +50,8 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @end
 
 @protocol EGOTextAttachmentCell <NSObject>
+- (NSString *)placeHolderString;
 @optional
-
 // the attachment must either implement -attachmentView or both
 // -attachmentSize and -attachmentDrawInRect:
 - (UIView *)attachmentView;
@@ -101,7 +101,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     EGOSelectionView    *_selectionView;
     
     NSMutableArray      *_attachmentViews;
-    
 }
 
 @property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
@@ -122,4 +121,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 
 - (BOOL)hasText;
 
+- (void)addAttachmentCell:(id<EGOTextAttachmentCell>)cell;
+
+- (NSString *)realString;
 @end
