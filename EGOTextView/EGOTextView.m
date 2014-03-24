@@ -63,6 +63,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 // MARK: EGOContentView definition
 
+static float caretHeight;
+
 @interface EGOContentView : UIView {
 @private
     id _delegate;
@@ -358,6 +360,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     UIFont *oldFont = _font;
     _font = [font retain];
     [oldFont release];
+    
+    caretHeight = font.ascender + ABS(font.descender);
     
     CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);
     NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
@@ -808,7 +812,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     // no text / first index
     if (_attributedString.length == 0 || index == 0) {
         CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
-        return CGRectMake(origin.x, origin.y, 3, self.font.ascender + fabs(self.font.descender*2));
+        return CGRectMake(origin.x, origin.y, 3, caretHeight);
     }    
 
     // last index is newline
@@ -827,7 +831,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         free(origins);
         
         origin.y -= self.font.leading;
-        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, ceilf((descent) + ascent));
+        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, caretHeight);
         
     }
 
@@ -862,7 +866,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
             }
             
-            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, ceilf((descent) + ascent));
+            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, caretHeight);
 
         } 
         
