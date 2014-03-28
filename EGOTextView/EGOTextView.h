@@ -62,6 +62,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @end
 
 @class EGOCaretView, EGOContentView, EGOTextWindow, EGOMagnifyView, EGOSelectionView;
+@class EGOEmojiAttachmentCell;
 @interface EGOTextView : UIScrollView <UITextInputTraits, UITextInput> {
 @private
     NSMutableAttributedString          *_mutableAttributedString;
@@ -120,7 +121,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 
 - (BOOL)hasText;
 
-- (void)addAttachmentCell:(id<EGOTextAttachmentCell>)cell;
+- (void)addImageWithName:(NSString *)name;
 
 - (NSString *)realString;
 @end

@@ -24,6 +24,7 @@
 //
 
 #import "EGOTextView.h"
+#import "EGOEmojiAttachmentCell.h"
 #import <QuartzCore/QuartzCore.h>
 
 NSString * const EGOTextAttachmentAttributeName = @"com.enormego.EGOTextAttachmentAttribute";
@@ -53,12 +54,19 @@ static CGSize AttachmentRunDelegateGetSize(void *refCon) {
     }
 }
 
+static CGFloat AttachmentRunDelegateGetAscent(void *refCon) {
+    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    return cell.ascent;
+}
+
 static CGFloat AttachmentRunDelegateGetDescent(void *refCon) {
-    return AttachmentRunDelegateGetSize(refCon).height;
+    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    return cell.descent;
 }
 
 static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
-    return AttachmentRunDelegateGetSize(refCon).width;
+    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    return cell.size.width;
 }
 
 // MARK: EGOContentView definition
@@ -375,7 +383,7 @@ static float caretHeight;
     NSRange range = NSMakeRange(0, _attributedString.string.length);
     if (!_editing && !_editable) {
 //        [self checkLinksForRange:range];
-//        [self scanAttachments];
+        [self scanAttachments];
     }
     
     [self textChanged];
@@ -433,7 +441,143 @@ static float caretHeight;
     
 }
 
+#pragma mark - 解析字符串
+- (NSString *)realStringFromNSAttributeString:(NSAttributedString *)attributeString {
+    NSString *realString = [NSString stringWithString:attributeString.string];
+    
+    NSMutableString *s = [[NSMutableString alloc] init];
+    __block NSUInteger index = 0;
+    
+    [attributeString enumerateAttribute:EGOTextAttachmentAttributeName inRange:NSMakeRange(0, attributeString.length) options:0 usingBlock:^(id value, NSRange range, BOOL *stop) {
+        if (value != nil) {
+            if (range.location > index) {
+                [s appendString:[realString substringWithRange:NSMakeRange(index, range.location - index)]];
+            }
+            EGOEmojiAttachmentCell *cell = value;
+            [s appendString:[NSString stringWithFormat:@"[%@]", [cell placeHolderString]]];
+            index = range.location + range.length;
+        }
+    }];
+    if (index < realString.length) {
+        [s appendString:[realString substringFromIndex:index]];
+    }
+    return s;
+}
 
+- (NSString *)realString {
+    return [self realStringFromNSAttributeString:self.attributedString];
+}
+
+- (void)addImageWithName:(NSString *)name {
+    NSString *text = [NSString stringWithFormat:@"[%@]", name];
+    NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
+    
+    NSRange selectedNSRange = self.selectedRange;
+    NSRange markedTextRange = self.markedRange;
+    [_mutableAttributedString setAttributedString:self.attributedString];
+    
+    if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
+        
+        [_mutableAttributedString replaceCharactersInRange:self.correctionRange withAttributedString:newString];
+        selectedNSRange.length = 0;
+        selectedNSRange.location = (self.correctionRange.location+1);
+        self.correctionRange = NSMakeRange(NSNotFound, 0);
+        
+    } else if (markedTextRange.location != NSNotFound) {
+        
+        [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
+        selectedNSRange.location = markedTextRange.location + 1;
+        selectedNSRange.length = 0;
+        markedTextRange = NSMakeRange(NSNotFound, 0);
+        
+        
+    } else if (selectedNSRange.length > 0) {
+        
+        [_mutableAttributedString replaceCharactersInRange:selectedNSRange withAttributedString:newString];
+        selectedNSRange.length = 0;
+        selectedNSRange.location = (selectedNSRange.location + 1);
+        
+        
+    } else {
+        
+        [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];
+        selectedNSRange.location += 1;
+        
+    }
+        
+    self.attributedString = _mutableAttributedString;
+    self.markedRange = markedTextRange;
+    self.selectedRange = selectedNSRange;
+}
+
+- (UIFont *)fontOfAttributes:(NSDictionary *)attributes {
+    if ([NSMutableParagraphStyle class]) {
+        return [attributes objectForKey:(NSString *)kCTFontAttributeName];
+    } else {
+        CTFontRef ctFont = (__bridge CTFontRef)([attributes objectForKey:(NSString *)kCTFontAttributeName]);
+        CGFloat pointSize = CTFontGetSize(ctFont);
+        NSString *fontPostScriptName = (NSString *)CFBridgingRelease(CTFontCopyPostScriptName(ctFont));
+        UIFont *fontFromCTFont = [UIFont fontWithName:fontPostScriptName size:pointSize];
+        return fontFromCTFont;
+    }
+}
+
+- (CGSize)imageSizeWithFont:(UIFont *)font {
+    return CGSizeMake([font pointSize], [font pointSize]);
+}
+
+- (NSAttributedString *)parseString:(NSString *)text attribute:(NSDictionary *)attributes {
+    NSMutableAttributedString *all = [[NSMutableAttributedString alloc] init];
+    if (text.length == 0) {
+        return all;
+    }
+    
+    UIFont *textFont = [self fontOfAttributes:attributes];
+    CGSize imageSize = [self imageSizeWithFont:textFont];
+    
+    NSRegularExpression* regex = [[NSRegularExpression alloc] initWithPattern:@"\\[([a-zA-Z0-9_]+)\\]"
+                                                                      options:0 error:nil];
+    __block NSUInteger index = 0;
+    [regex enumerateMatchesInString:text options:0 range:NSMakeRange(0, text.length) usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        NSRange range = result.range;
+        if (range.location > index) {
+            NSString *s = [text substringWithRange:NSMakeRange(index, range.location - index)];
+            
+            NSMutableAttributedString *str = [[NSMutableAttributedString alloc] initWithString:s attributes:attributes];
+            [all appendAttributedString:str];
+        }
+        
+        NSString *name = [text substringWithRange:[result rangeAtIndex:1]];
+        EGOEmojiAttachmentCell *cell = [EGOEmojiAttachmentCell cellWithName:name];
+        cell.size = imageSize;
+        cell.descent = textFont.descender;
+        cell.ascent = textFont.ascender;
+        CTRunDelegateCallbacks callbacks = {
+            .version = kCTRunDelegateVersion1,
+            .dealloc = AttachmentRunDelegateDealloc,
+            .getAscent = AttachmentRunDelegateGetAscent,
+            .getDescent = AttachmentRunDelegateGetDescent,
+            .getWidth = AttachmentRunDelegateGetWidth
+        };
+        CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(cell));
+        
+        NSMutableDictionary *cellAttributes = [NSMutableDictionary dictionaryWithDictionary:attributes];
+        [cellAttributes setObject:(__bridge id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
+        [cellAttributes setObject:cell forKey:EGOTextAttachmentAttributeName];
+        NSAttributedString *imgString = [[NSAttributedString alloc] initWithString:EGOTextAttachmentPlaceholderString attributes:cellAttributes];
+        CFRelease(runDelegate);
+        [all appendAttributedString:imgString];
+        
+        index = range.location + range.length;
+    }];
+    if (index < text.length) {
+        NSString *s = [text substringFromIndex:index];
+        
+        NSMutableAttributedString *str = [[NSMutableAttributedString alloc] initWithString:s attributes:attributes];
+        [all appendAttributedString:str];
+    }
+    return all;
+}
 /////////////////////////////////////////////////////////////////////////////
 // MARK: -
 // MARK: Layout methods
@@ -575,17 +719,15 @@ static float caretHeight;
         for (CFIndex runsIndex = 0; runsIndex < runsCount; runsIndex++) {
             CTRunRef run = CFArrayGetValueAtIndex(runs, runsIndex);
             CFDictionaryRef attributes = CTRunGetAttributes(run);
-            id <EGOTextAttachmentCell> attachmentCell = [(__bridge id)attributes objectForKey: EGOTextAttachmentAttributeName];
-            if (attachmentCell != nil && [attachmentCell respondsToSelector: @selector(attachmentSize)] && [attachmentCell respondsToSelector: @selector(attachmentDrawInRect:)]) {
+            EGOEmojiAttachmentCell *cell = [(__bridge id)attributes objectForKey: EGOTextAttachmentAttributeName];
+            if (cell != nil) {
                 CGPoint position;
                 CTRunGetPositions(run, CFRangeMake(0, 1), &position);
                 
-                CGSize size = [attachmentCell attachmentSize];
-                CGRect rect = { { origins[i].x + position.x, origins[i].y + position.y }, size };
+                CGSize size = [cell size];
+                CGRect rect = { { origins[i].x + position.x + 1, origins[i].y + position.y + cell.descent * 0.5 }, size };
                 
-                UIGraphicsPushContext(UIGraphicsGetCurrentContext());
-                [attachmentCell attachmentDrawInRect: rect];
-                UIGraphicsPopContext();
+                CGContextDrawImage(ctx, rect, cell.image.CGImage);
             }
         }
 	}
@@ -1065,6 +1207,9 @@ static float caretHeight;
 
 - (NSString *)textInRange:(UITextRange *)range {
     EGOIndexedRange *r = (EGOIndexedRange *)range;
+    if (r.range.length == 0 || r.range.location == NSNotFound) {
+        return nil;
+    }
     return ([_attributedString.string substringWithRange:r.range]);
 }
 
@@ -1079,7 +1224,8 @@ static float caretHeight;
         selectedNSRange = [self rangeIntersection:r.range withSecond:_selectedRange];
     }
     
-    [_mutableAttributedString replaceCharactersInRange:r.range withString:text];        
+    NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
+    [_mutableAttributedString replaceCharactersInRange:r.range withAttributedString:newString];
     self.attributedString = _mutableAttributedString;
     self.selectedRange = selectedNSRange;
     
@@ -1111,19 +1257,19 @@ static float caretHeight;
     if (markedTextRange.location != NSNotFound) {
         if (!markedText)
             markedText = @"";
-        
-        [_mutableAttributedString replaceCharactersInRange:markedTextRange withString:markedText];
+        NSAttributedString *newString = [self parseString:markedText attribute:self.defaultAttributes];
+        [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
         markedTextRange.length = markedText.length;
         
     } else if (selectedNSRange.length > 0) {
-        
-        [_mutableAttributedString replaceCharactersInRange:selectedNSRange withString:markedText];
+        NSAttributedString *newString = [self parseString:markedText attribute:self.defaultAttributes];
+        [_mutableAttributedString replaceCharactersInRange:selectedNSRange withAttributedString:newString];
         markedTextRange.location = selectedNSRange.location;
         markedTextRange.length = markedText.length;
         
     } else {
         
-        NSAttributedString *string = [[NSAttributedString alloc] initWithString:markedText attributes:self.defaultAttributes];
+        NSAttributedString *string = [self parseString:markedText attribute:self.defaultAttributes];
         [_mutableAttributedString insertAttributedString:string atIndex:selectedNSRange.location];
         
         markedTextRange.location = selectedNSRange.location;
@@ -1364,7 +1510,7 @@ static float caretHeight;
     
     [_mutableAttributedString setAttributedString:self.attributedString];
     
-    NSAttributedString *newString = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
+    NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
     
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0){
         
@@ -1403,84 +1549,6 @@ static float caretHeight;
         [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
     }
   
-}
-
-- (NSString *)realString {
-    NSString *realString = [NSString stringWithString:self.attributedString.string];
-
-    NSMutableString *s = [[NSMutableString alloc] init];
-    __block NSUInteger index = 0;
-
-    [self.attributedString enumerateAttribute:EGOTextAttachmentAttributeName inRange:NSMakeRange(0, self.attributedString.length) options:0 usingBlock:^(id value, NSRange range, BOOL *stop) {
-        if (value != nil) {
-            if (range.location > index) {
-                [s appendString:[realString substringWithRange:NSMakeRange(index, range.location - index)]];
-            }
-            id<EGOTextAttachmentCell> cell = value;
-            [s appendString:[NSString stringWithFormat:@"[%@]", [cell placeHolderString]]];
-            index = range.location + range.length;
-        }
-    }];
-    if (index < realString.length) {
-        [s appendString:[realString substringFromIndex:index]];
-    }
-    return s;
-}
-
-- (void)addAttachmentCell:(id<EGOTextAttachmentCell>)cell {
-    NSRange selectedNSRange = self.selectedRange;
-    NSRange markedTextRange = self.markedRange;
-    
-    [_mutableAttributedString setAttributedString:self.attributedString];
-    
-    CTRunDelegateCallbacks callbacks = {
-        .version = kCTRunDelegateVersion1,
-        .dealloc = AttachmentRunDelegateDealloc,
-        .getAscent = AttachmentRunDelegateGetDescent,
-        //.getDescent = AttachmentRunDelegateGetDescent,
-        .getWidth = AttachmentRunDelegateGetWidth
-    };
-    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(cell));
-    NSMutableDictionary *attributes = [NSMutableDictionary dictionaryWithObject:(__bridge id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
-    [attributes setObject:cell forKey:EGOTextAttachmentAttributeName];
-    NSAttributedString *newString = [[NSAttributedString alloc] initWithString:EGOTextAttachmentPlaceholderString attributes:attributes];
-    CFRelease(runDelegate);
-    
-    if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
-        
-        [_mutableAttributedString replaceCharactersInRange:self.correctionRange withAttributedString:newString];
-        selectedNSRange.length = 0;
-        selectedNSRange.location = (self.correctionRange.location+1);
-        self.correctionRange = NSMakeRange(NSNotFound, 0);
-        
-    } else if (markedTextRange.location != NSNotFound) {
-        
-        [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
-        selectedNSRange.location = markedTextRange.location + 1;
-        selectedNSRange.length = 0;
-        markedTextRange = NSMakeRange(NSNotFound, 0);
-        
-        
-    } else if (selectedNSRange.length > 0) {
-        
-        [_mutableAttributedString replaceCharactersInRange:selectedNSRange withAttributedString:newString];
-        selectedNSRange.length = 0;
-        selectedNSRange.location = (selectedNSRange.location + 1);
-        
-        
-    } else {
-        
-        [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];
-        selectedNSRange.location += 1;
-        
-    }
-    
-    
-    self.attributedString = _mutableAttributedString;
-//    [self scanAttachments];
-    
-    self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;
 }
 
 - (void)deleteBackward  {
@@ -2273,8 +2341,8 @@ static float caretHeight;
 }
 
 - (void)cut:(id)sender {
-    
-    NSString *string = [_attributedString.string substringWithRange:_selectedRange];
+    NSAttributedString *attributeString = [self.attributedString attributedSubstringFromRange:_selectedRange];
+    NSString *string = [self realStringFromNSAttributeString:attributeString];
     [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
     
     [_mutableAttributedString setAttributedString:self.attributedString];
@@ -2282,17 +2350,16 @@ static float caretHeight;
     
     [self.inputDelegate textWillChange:self];       
     [self setAttributedString:_mutableAttributedString];
+    self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     [self.inputDelegate textDidChange:self];       
     
-    self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     
 }
 
 - (void)copy:(id)sender {
-    
-    NSString *string = [self.attributedString.string substringWithRange:_selectedRange];
-    [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
-    
+    NSAttributedString *attributeString = [self.attributedString attributedSubstringFromRange:_selectedRange];
+    NSString *realString = [self realStringFromNSAttributeString:attributeString];
+    [[UIPasteboard generalPasteboard] setValue:realString forPasteboardType:@"public.utf8-plain-text"];
 }
 
 - (void)delete:(id)sender {
@@ -2301,9 +2368,9 @@ static float caretHeight;
     [_mutableAttributedString deleteCharactersInRange:_selectedRange];
     [self.inputDelegate textWillChange:self];       
     [self setAttributedString:_mutableAttributedString];
+    self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     [self.inputDelegate textDidChange:self];   
     
-    self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     
 }
 

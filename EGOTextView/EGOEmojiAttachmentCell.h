@@ -9,12 +9,14 @@
 #import <Foundation/Foundation.h>
 #import "EGOTextView.h"
 
-@interface EGOEmojiAttachmentCell : NSObject<EGOTextAttachmentCell>
+@interface EGOEmojiAttachmentCell : NSObject
 
-@property (nonatomic) float width;
-@property (nonatomic) float height;
-@property (nonatomic) float offsetY;
+@property (nonatomic) CGSize size;
+@property (nonatomic) float descent;
+@property (nonatomic) float ascent;
+@property (strong, nonatomic) UIImage *image;
 
 + (EGOEmojiAttachmentCell *)cellWithName:(NSString *)name;
+- (NSString *)placeHolderString;
 
 @end

@@ -91,7 +91,7 @@
 
 - (void)btClick {
 //    self.egoTextView.attributedString
-    UIFont *font = self.egoTextView.font;
+//    UIFont *font = self.egoTextView.font;
 //    NSLog(@"pointSize: %f", font.pointSize);
 //    NSLog(@"capHeight: %f", font.capHeight);
 //    NSLog(@"lineHeight: %f", font.lineHeight);
@@ -99,11 +99,12 @@
 //    NSLog(@"descender: %f", font.descender);
 //    NSLog(@"xHeight: %f", font.xHeight);
 //    NSLog(@"leading: %f", font.leading);
-    EGOEmojiAttachmentCell *cell = [EGOEmojiAttachmentCell cellWithName:@"emotion11"];
-    cell.width = font.pointSize;
-    cell.height = font.pointSize;
-    cell.offsetY = ABS(font.descender * 0.5);
-    [self.egoTextView addAttachmentCell:cell];
+//    EGOEmojiAttachmentCell *cell = [EGOEmojiAttachmentCell cellWithName:@"emotion11"];
+//    cell.size = CGSizeMake([font pointSize], [font pointSize]);
+//    cell.descent = font.descender;
+//    cell.ascent = font.ascender;
+//    [self.egoTextView addAttachmentCell:cell];
+    [self.egoTextView addImageWithName:@"emotion11"];
 }
 
 - (void)rbtClick {
