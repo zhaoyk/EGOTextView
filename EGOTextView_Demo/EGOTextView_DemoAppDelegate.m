@@ -41,7 +41,6 @@
     
     UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:self.viewController];
     self.window.rootViewController = navController;
-    [navController release];
     [self.window makeKeyAndVisible];
     return YES;
 }
@@ -83,13 +82,6 @@
      Save data if appropriate.
      See also applicationDidEnterBackground:.
      */
-}
-
-- (void)dealloc
-{
-    [_window release];
-    [_viewController release];
-    [super dealloc];
 }
 
 @end

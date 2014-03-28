@@ -41,11 +41,11 @@ typedef enum {
 
 // MARK: Text attachment helper functions
 static void AttachmentRunDelegateDealloc(void *refCon) {
-    [(id)refCon release];
+    CFBridgingRelease(refCon);
 }
 
 static CGSize AttachmentRunDelegateGetSize(void *refCon) {
-    id <EGOTextAttachmentCell> cell = refCon;
+    id <EGOTextAttachmentCell> cell = (__bridge id<EGOTextAttachmentCell>)(refCon);
     if ([cell respondsToSelector: @selector(attachmentSize)]) {
         return [cell attachmentSize];
     } else {
@@ -65,11 +65,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 static float caretHeight;
 
-@interface EGOContentView : UIView {
-@private
-    id _delegate;
-}
-@property(nonatomic,assign) id delegate;
+@interface EGOContentView : UIView
+@property(nonatomic, weak) id delegate;
 @end
 
 // MARK: EGOCaretView definition
@@ -182,11 +179,14 @@ static float caretHeight;
 
 @end
 
-@interface EGOTextView ()
+@interface EGOTextView () {
+    id <UITextInputDelegate> __unsafe_unretained _inputDelegate;
+}
 @property(nonatomic,retain) NSDictionary *defaultAttributes;
 @property(nonatomic,retain) NSDictionary *correctionAttributes;
 @property(nonatomic,retain) NSMutableDictionary *menuItemActions;
 @property(nonatomic) NSRange correctionRange;
+
 @end
 
 
@@ -203,9 +203,8 @@ static float caretHeight;
 @synthesize defaultAttributes=_defaultAttributes;
 @synthesize correctionAttributes=_correctionAttributes;
 @synthesize markedTextStyle=_markedTextStyle;
-@synthesize inputDelegate=_inputDelegate;
 @synthesize menuItemActions;
-
+@synthesize inputDelegate=_inputDelegate;
 @synthesize dataDetectorTypes;
 @synthesize autocapitalizationType;
 @synthesize autocorrectionType;
@@ -228,23 +227,19 @@ static float caretHeight;
     contentView.autoresizingMask = self.autoresizingMask;
     contentView.delegate = self;
     [self addSubview:contentView];
-    _textContentView = [contentView retain];
-    [contentView release];
+    _textContentView = contentView;
     
     UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
     gesture.delegate = (id<UIGestureRecognizerDelegate>)self;
     [self addGestureRecognizer:gesture];
-    [gesture release];
     _longPress = gesture;
     
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTap:)];
     [doubleTap setNumberOfTapsRequired:2];
     [self addGestureRecognizer:doubleTap];
-    [doubleTap release];
     
     UITapGestureRecognizer *singleTap =  [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
     [self addGestureRecognizer:singleTap];
-    [singleTap release];
 }
 
 - (id)initWithFrame:(CGRect)frame {
@@ -264,18 +259,6 @@ static float caretHeight;
         [self commonInit];
     }
     return self;
-}
-
-- (void)dealloc {
-    
-    _textWindow=nil;
-    [_font release], _font=nil;
-    [_attributedString release], _attributedString=nil;
-    [_caretView release], _caretView=nil;
-    self.menuItemActions=nil;
-    self.defaultAttributes=nil;
-    self.correctionAttributes=nil;
-    [super dealloc];
 }
 
 - (void)clearPreviousLayoutInformation {
@@ -357,15 +340,13 @@ static float caretHeight;
 
 - (void)setFont:(UIFont *)font {
     
-    UIFont *oldFont = _font;
-    _font = [font retain];
-    [oldFont release];
+    _font = font;
     
     caretHeight = font.ascender + ABS(font.descender);
     
     CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);
     NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-    [dictionary setValue:(id)ctFont forKey:(NSString *)kCTFontAttributeName];
+    [dictionary setValue:(__bridge id)ctFont forKey:(NSString *)kCTFontAttributeName];
     [dictionary setValue:(id)[UIColor blackColor].CGColor forKey:(NSString *)kCTForegroundColorAttributeName];
     NSNumber *kern = [NSNumber numberWithFloat:0];
     [dictionary setValue:kern forKey:(id)kCTKernAttributeName];
@@ -382,7 +363,6 @@ static float caretHeight;
 
     NSAttributedString *string = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
     [self setAttributedString:string];
-    [string release];
     
     [self.inputDelegate textDidChange:self];       
 
@@ -390,13 +370,11 @@ static float caretHeight;
 
 - (void)setAttributedString:(NSAttributedString*)string {
 
-    NSAttributedString *aString = _attributedString;
     _attributedString = [string copy];
-    [aString release], aString = nil;
     
     NSRange range = NSMakeRange(0, _attributedString.string.length);
     if (!_editing && !_editable) {
-        [self checkLinksForRange:range];
+//        [self checkLinksForRange:range];
 //        [self scanAttachments];
     }
     
@@ -437,25 +415,18 @@ static float caretHeight;
         
         NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithInt:(int)(kCTUnderlineStyleThick|kCTUnderlinePatternDot)], kCTUnderlineStyleAttributeName, (id)[UIColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f].CGColor, kCTUnderlineColorAttributeName, nil];
         self.correctionAttributes = dictionary;
-        [dictionary release];
         
     } else {
         
         if (_caretView) {
             [_caretView removeFromSuperview];
-            [_caretView release], _caretView=nil;
+            _caretView = nil;
         }
         
         self.correctionAttributes=nil;
-        if (_textChecker!=nil) {
-            [_textChecker release], _textChecker=nil;
-        }
-        if (_tokenizer!=nil) {
-            [_tokenizer release], _tokenizer=nil;
-        }
-        if (_mutableAttributedString!=nil) {
-            [_mutableAttributedString release], _mutableAttributedString=nil;
-        }
+        _textChecker = nil;
+        _tokenizer = nil;
+        _mutableAttributedString = nil;
         
     }
     _editable = editable;
@@ -547,7 +518,7 @@ static float caretHeight;
     
     for (int i = 0; i < count; i++) {
        
-        CTLineRef line = (CTLineRef) [lines objectAtIndex:i];
+        CTLineRef line = (__bridge CTLineRef) [lines objectAtIndex:i];
         CFRange lineRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(lineRange.location==kCFNotFound ? NSNotFound : lineRange.location, lineRange.length);
         NSRange intersection = [self rangeIntersection:range withSecond:selectionRange];
@@ -573,7 +544,6 @@ static float caretHeight;
     }  
     
     [self drawPathFromRects:pathRects cornerRadius:cornerRadius];
-    [pathRects release];
     free(origins);
 
 }
@@ -605,7 +575,7 @@ static float caretHeight;
         for (CFIndex runsIndex = 0; runsIndex < runsCount; runsIndex++) {
             CTRunRef run = CFArrayGetValueAtIndex(runs, runsIndex);
             CFDictionaryRef attributes = CTRunGetAttributes(run);
-            id <EGOTextAttachmentCell> attachmentCell = [(id)attributes objectForKey: EGOTextAttachmentAttributeName];
+            id <EGOTextAttachmentCell> attachmentCell = [(__bridge id)attributes objectForKey: EGOTextAttachmentAttributeName];
             if (attachmentCell != nil && [attachmentCell respondsToSelector: @selector(attachmentSize)] && [attachmentCell respondsToSelector: @selector(attachmentDrawInRect:)]) {
                 CGPoint position;
                 CTRunGetPositions(run, CFRangeMake(0, 1), &position);
@@ -637,7 +607,7 @@ static float caretHeight;
         
         if (point.y > origins[i].y) {
             
-            CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
+            CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
@@ -718,7 +688,7 @@ static float caretHeight;
     
     for (int i = 0; i < lines.count; i++) {
         if (point.y > origins[i].y) {
-            CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
+            CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
             index = CTLineGetStringIndexForPosition(line, convertedPoint);  
             break;
@@ -746,7 +716,7 @@ static float caretHeight;
         
         if (point.y > origins[i].y) {
 
-            CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
+            CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
             NSInteger index = CTLineGetStringIndexForPosition(line, convertedPoint);
            
@@ -779,7 +749,7 @@ static float caretHeight;
     
     for (int i=0; i < count; i++) {
         
-        __block CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
+        __block CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length == kCFNotFound ? 0 : cfRange.length);
         
@@ -818,7 +788,7 @@ static float caretHeight;
     // last index is newline
     if (index == _attributedString.length && [_attributedString.string characterAtIndex:(index - 1)] == '\n' ) {
        
-        CTLineRef line = (CTLineRef)[lines lastObject];
+        CTLineRef line = (__bridge CTLineRef)[lines lastObject];
         CFRange range = CTLineGetStringRange(line);
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         CGFloat ascent, descent;
@@ -845,7 +815,7 @@ static float caretHeight;
         
     for (int i = 0; i < count; i++) {
 
-        CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
+        CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
                 
@@ -888,7 +858,7 @@ static float caretHeight;
     
     for (int i = 0; i < count; i++) {
        
-        CTLineRef line = (CTLineRef) [lines objectAtIndex:i];
+        CTLineRef line = (__bridge CTLineRef) [lines objectAtIndex:i];
         CFRange lineRange = CTLineGetStringRange(line);
         NSInteger localIndex = index - lineRange.location;
       
@@ -960,7 +930,6 @@ static float caretHeight;
             EGOSelectionView *view = [[EGOSelectionView alloc] initWithFrame:_textContentView.bounds];
             [_textContentView addSubview:view];
             _selectionView=view;
-            [view release];  
             
         }
         
@@ -1057,7 +1026,6 @@ static float caretHeight;
     if (_linkRange.length>0) {
         UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
         [actionSheet showInView:self];
-        [actionSheet release];
     }
     
 }
@@ -1065,7 +1033,7 @@ static float caretHeight;
 + (UIColor*)selectionColor {
     static UIColor *color = nil;
     if (color == nil) {
-        color = [[UIColor colorWithRed:0.800f green:0.867f blue:0.929f alpha:1.0f] retain];    
+        color = [UIColor colorWithRed:0.800f green:0.867f blue:0.929f alpha:1.0f];
     }    
     return color;
 }
@@ -1073,7 +1041,7 @@ static float caretHeight;
 + (UIColor*)caretColor {
     static UIColor *color = nil;
     if (color == nil) {
-        color = [[UIColor colorWithRed:0.259f green:0.420f blue:0.949f alpha:1.0f] retain];
+        color = [UIColor colorWithRed:0.259f green:0.420f blue:0.949f alpha:1.0f];
     }
     return color;
 }
@@ -1081,7 +1049,7 @@ static float caretHeight;
 + (UIColor*)spellingSelectionColor {
     static UIColor *color = nil;
     if (color == nil) {
-        color = [[UIColor colorWithRed:1.000f green:0.851f blue:0.851f alpha:1.0f] retain];
+        color = [UIColor colorWithRed:1.000f green:0.851f blue:0.851f alpha:1.0f];
     }
     return color;
 }
@@ -1156,8 +1124,7 @@ static float caretHeight;
     } else {
         
         NSAttributedString *string = [[NSAttributedString alloc] initWithString:markedText attributes:self.defaultAttributes];
-        [_mutableAttributedString insertAttributedString:string atIndex:selectedNSRange.location];  
-        [string release];
+        [_mutableAttributedString insertAttributedString:string atIndex:selectedNSRange.location];
         
         markedTextRange.location = selectedNSRange.location;
         markedTextRange.length = markedText.length;
@@ -1371,8 +1338,8 @@ static float caretHeight;
     NSDictionary *attribs = [self.attributedString attributesAtIndex:index effectiveRange:nil];
     NSMutableDictionary *dictionary = [NSMutableDictionary dictionaryWithCapacity:1];
     
-    CTFontRef ctFont = (CTFontRef)[attribs valueForKey:(NSString*)kCTFontAttributeName];
-    UIFont *font = [UIFont fontWithName:(NSString*)CTFontCopyFamilyName(ctFont) size:CTFontGetSize(ctFont)];
+    CTFontRef ctFont = (__bridge CTFontRef)[attribs valueForKey:(NSString*)kCTFontAttributeName];
+    UIFont *font = [UIFont fontWithName:(NSString*)CFBridgingRelease(CTFontCopyFamilyName(ctFont)) size:CTFontGetSize(ctFont)];
     
     [dictionary setObject:font forKey:UITextInputTextFontKey];
     
@@ -1426,7 +1393,6 @@ static float caretHeight;
         
     }
     
-    [newString release];
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
@@ -1474,8 +1440,8 @@ static float caretHeight;
         //.getDescent = AttachmentRunDelegateGetDescent,
         .getWidth = AttachmentRunDelegateGetWidth
     };
-    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, [cell retain]);
-    NSMutableDictionary *attributes = [NSMutableDictionary dictionaryWithObject:(id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
+    CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(cell));
+    NSMutableDictionary *attributes = [NSMutableDictionary dictionaryWithObject:(__bridge id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
     [attributes setObject:cell forKey:EGOTextAttachmentAttributeName];
     NSAttributedString *newString = [[NSAttributedString alloc] initWithString:EGOTextAttachmentPlaceholderString attributes:attributes];
     CFRelease(runDelegate);
@@ -1509,7 +1475,6 @@ static float caretHeight;
         
     }
     
-    [newString release];
     
     self.attributedString = _mutableAttributedString;
 //    [self scanAttachments];
@@ -1598,12 +1563,12 @@ static float caretHeight;
         
         if ([result resultType] == NSTextCheckingTypeLink) {
             *stop = YES;
-            link = [result retain];
+            link = result;
         }
         
     }];
 
-    return [link autorelease];
+    return link;
     
 }
 
@@ -1648,14 +1613,13 @@ static float caretHeight;
             };
             
             // the retain here is balanced by the release in the Dealloc function
-            CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, [value retain]);
-            [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: (id)runDelegate range:range];
+            CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(value));
+            [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: (__bridge id)runDelegate range:range];
             CFRelease(runDelegate);
         }
     }];
     
     if (mutableAttributedString) {
-        [_attributedString release];
         _attributedString = mutableAttributedString;
     }
 }
@@ -1690,7 +1654,6 @@ static float caretHeight;
     NSMutableAttributedString *string = [_attributedString mutableCopy];
     [string addAttributes:self.correctionAttributes range:range];
     self.attributedString = string;
-    [string release];
     
 }
 
@@ -1699,7 +1662,6 @@ static float caretHeight;
     NSMutableAttributedString *string = [_attributedString mutableCopy];
     [string removeAttribute:(NSString*)kCTUnderlineStyleAttributeName range:range];
     self.attributedString = string;
-    [string release];
     
 }
 
@@ -2194,22 +2156,18 @@ static float caretHeight;
             
             UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:word action:sel];
             [items addObject:item];
-            [item release];
             if ([items count]>=4) {
                 break;
             }
         }
         
-        [menuController setMenuItems:items];  
-        [items release];
-        
+        [menuController setMenuItems:items];
         
         
     } else {
         
         UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:@"No Replacements Found" action:@selector(spellCheckMenuEmpty:)];
         [menuController setMenuItems:[NSArray arrayWithObject:item]];
-        [item release];        
         
     }
     
@@ -2367,7 +2325,7 @@ static float caretHeight;
 + (EGOIndexedPosition *)positionWithIndex:(NSUInteger)index {
     EGOIndexedPosition *pos = [[EGOIndexedPosition alloc] init];
     pos.index = index;
-    return [pos autorelease];
+    return pos;
 }
 - (NSString *)description {
     return [NSString stringWithFormat:@"index: %d", self.index];
@@ -2389,7 +2347,7 @@ static float caretHeight;
     
     EGOIndexedRange *range = [[EGOIndexedRange alloc] init];
     range.range = theRange;
-    return [range autorelease];
+    return range;
 }
 
 - (UITextPosition *)start {
@@ -2440,10 +2398,6 @@ static float caretHeight;
     
     [_delegate drawContentInRect:rect];
     
-}
-
-- (void)dealloc {
-    [super dealloc];
 }
 
 @end
@@ -2497,9 +2451,6 @@ static const NSTimeInterval kBlinkRate = 1.0;
     
 }
 
-- (void)dealloc {
-    [super dealloc];
-}
 
 @end
 
@@ -2538,16 +2489,9 @@ static const NSTimeInterval kBlinkRate = 1.0;
 }
 
 - (void)setContentImage:(UIImage *)image {
-    
-    [_contentImage release], _contentImage=nil;
-    _contentImage = [image retain];
+    _contentImage = image;
     [self setNeedsDisplay];
 
-}
-
-- (void)dealloc {
-    [_contentImage release], _contentImage=nil;
-    [super dealloc];
 }
 
 @end
@@ -2595,7 +2539,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             }
             [self addSubview:view];
             _view=view;
-            [view release];
         }
                         
         CGRect frame = _view.frame;
@@ -2781,10 +2724,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     [self updateWindowTransform];
 }
 
-- (void)dealloc {
-    _view=nil;
-    [super dealloc];
-}
 
 @end
 
@@ -2823,16 +2762,9 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 }
 
 - (void)setContentImage:(UIImage *)image {
-    
-    [_contentImage release], _contentImage=nil;
-    _contentImage = [image retain];
+    _contentImage = image;
     [self setNeedsDisplay];
     
-}
-
-- (void)dealloc {
-    [_contentImage release], _contentImage=nil;
-    [super dealloc];
 }
 
 @end
@@ -2869,8 +2801,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         UIView *view = [[UIView alloc] initWithFrame:begin];
         view.backgroundColor = [EGOTextView caretColor];
         [self addSubview:view]; 
-        _leftCaret=[view retain];
-        [view release];
+        _leftCaret = view;
     }
     
     if (_leftDot==nil) {
@@ -2879,7 +2810,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         [view setImage:dotImage];
         [self addSubview:view];
         _leftDot = view;
-        [view release];
     }
     
     CGFloat _dotShadowOffset = 5.0f;
@@ -2890,8 +2820,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         UIView *view = [[UIView alloc] initWithFrame:end];
         view.backgroundColor = [EGOTextView caretColor];
         [self addSubview:view];
-        _rightCaret = [view retain];
-        [view release];
+        _rightCaret = view;
     }
     
     if (_rightDot==nil) {
@@ -2900,22 +2829,12 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         [view setImage:dotImage];
         [self addSubview:view];
         _rightDot = view;
-        [view release];
     }
     
     _rightCaret.frame = end;
     _rightDot.frame = CGRectMake(floorf(_rightCaret.center.x - (_rightDot.bounds.size.width/2)), CGRectGetMaxY(_rightCaret.frame), _rightDot.bounds.size.width, _rightDot.bounds.size.height);
     
 
-}
-
-- (void)dealloc {
-    
-   [_leftCaret release], _leftCaret=nil;
-   [_rightCaret release], _rightCaret=nil;
-    _rightDot=nil;
-    _leftDot=nil;
-    [super dealloc];
 }
 
 @end
