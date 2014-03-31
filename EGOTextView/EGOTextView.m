@@ -1013,10 +1013,11 @@ static float caretHeight;
 - (CGRect)caretRectForIndex:(NSInteger)index {  
         
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
-    
+    NSLog(@"_textContentView.bounds: %@", NSStringFromCGRect(_textContentView.bounds));
     // no text / first index
     if (_attributedString.length == 0 || index == 0) {
-        CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
+//        CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
+        CGPoint origin = CGPointMake(0, 0);
         return CGRectMake(origin.x, origin.y, 3, caretHeight);
     }    
 
@@ -1135,14 +1136,13 @@ static float caretHeight;
             [_selectionView removeFromSuperview];
             _selectionView=nil;
         }
-
-        if (!_caretView.superview) {
+        
+        if (_editing) {
             [_textContentView addSubview:_caretView];
-            [_textContentView setNeedsDisplay];            
+            [_textContentView setNeedsDisplay];
+            _caretView.frame = [self caretRectForIndex:self.selectedRange.location];
+            [_caretView delayBlink];
         }
-
-        _caretView.frame = [self caretRectForIndex:self.selectedRange.location];
-        [_caretView delayBlink];
         
         CGRect frame = _caretView.frame;
         frame.origin.y -= (self.font.lineHeight*2);
@@ -2055,22 +2055,22 @@ static float caretHeight;
         }
     }
     
-    UIMenuController *menuController = [UIMenuController sharedMenuController];
-    if ([menuController isMenuVisible]) {
-
-        [menuController setMenuVisible:NO animated:NO];
-        
-    } else {
-        
-//        if (index==self.selectedRange.location) {
-            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
-//        } else {
-//            if (_editing) {
-//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-//            }
-//        }
-        
-    }
+//    UIMenuController *menuController = [UIMenuController sharedMenuController];
+//    if ([menuController isMenuVisible]) {
+//
+//        [menuController setMenuVisible:NO animated:NO];
+//        
+//    } else {
+//        
+////        if (index==self.selectedRange.location) {
+//            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
+////        } else {
+////            if (_editing) {
+////                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+////            }
+////        }
+//        
+//    }
     
     [self.inputDelegate selectionWillChange:self];
     

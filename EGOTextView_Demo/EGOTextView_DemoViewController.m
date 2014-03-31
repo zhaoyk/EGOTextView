@@ -110,6 +110,7 @@
 - (void)rbtClick {
     //    self.egoTextView.attributedString
     NSLog(@"%@", [self.egoTextView realString]);
+    [self.egoTextView resignFirstResponder];
 }
 
 #pragma mark -
