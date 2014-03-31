@@ -1312,14 +1312,15 @@ static float caretHeight;
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
     EGOIndexedRange *r = (EGOIndexedRange *)range;
 
+    NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
+    
     NSRange selectedNSRange = self.selectedRange;
     if ((r.range.location + r.range.length) <= selectedNSRange.location) {
-        selectedNSRange.location -= (r.range.length - text.length);
+        selectedNSRange.location -= (r.range.length - newString.length);
     } else {
         selectedNSRange = [self rangeIntersection:r.range withSecond:_selectedRange];
     }
     
-    NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
     [_mutableAttributedString replaceCharactersInRange:r.range withAttributedString:newString];
     self.attributedString = _mutableAttributedString;
     self.selectedRange = selectedNSRange;
@@ -1355,7 +1356,7 @@ static float caretHeight;
             markedText = @"";
         NSAttributedString *newString = [self parseString:markedText attribute:self.defaultAttributes];
         [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
-        markedTextRange.length = markedText.length;
+        markedTextRange.length = newString.length;
         
     } else if (selectedNSRange.length > 0) {
         NSAttributedString *newString = [self parseString:markedText attribute:self.defaultAttributes];
@@ -1369,7 +1370,7 @@ static float caretHeight;
         [_mutableAttributedString insertAttributedString:string atIndex:selectedNSRange.location];
         
         markedTextRange.location = selectedNSRange.location;
-        markedTextRange.length = markedText.length;
+        markedTextRange.length = string.length;
     }
     
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
@@ -1611,13 +1612,13 @@ static float caretHeight;
         
         [_mutableAttributedString replaceCharactersInRange:self.correctionRange withAttributedString:newString];
         selectedNSRange.length = 0;
-        selectedNSRange.location = (self.correctionRange.location+text.length);
+        selectedNSRange.location = (self.correctionRange.location+newString.length);
         self.correctionRange = NSMakeRange(NSNotFound, 0);
 
     } else if (markedTextRange.location != NSNotFound) {
         
         [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
-        selectedNSRange.location = markedTextRange.location + text.length;
+        selectedNSRange.location = markedTextRange.location + newString.length;
         selectedNSRange.length = 0;
         markedTextRange = NSMakeRange(NSNotFound, 0); 
         
@@ -1625,12 +1626,12 @@ static float caretHeight;
         
         [_mutableAttributedString replaceCharactersInRange:selectedNSRange withAttributedString:newString];
         selectedNSRange.length = 0;
-        selectedNSRange.location = (selectedNSRange.location + text.length);
+        selectedNSRange.location = (selectedNSRange.location + newString.length);
         
     } else {
         
         [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];        
-        selectedNSRange.location += text.length;
+        selectedNSRange.location += newString.length;
         
     }
     
