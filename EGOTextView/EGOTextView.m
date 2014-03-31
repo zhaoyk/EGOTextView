@@ -2056,22 +2056,22 @@ static float caretHeight;
         }
     }
     
-//    UIMenuController *menuController = [UIMenuController sharedMenuController];
-//    if ([menuController isMenuVisible]) {
-//
-//        [menuController setMenuVisible:NO animated:NO];
-//        
-//    } else {
-//        
-////        if (index==self.selectedRange.location) {
-//            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
-////        } else {
-////            if (_editing) {
-////                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-////            }
-////        }
-//        
-//    }
+    UIMenuController *menuController = [UIMenuController sharedMenuController];
+    if ([menuController isMenuVisible]) {
+
+        [menuController setMenuVisible:NO animated:NO];
+        
+    } else {
+        
+        if (index==self.selectedRange.location) {
+            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
+        } else {
+//            if (_editing) {
+//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+//            }
+        }
+    
+    }
     
     [self.inputDelegate selectionWillChange:self];
     
