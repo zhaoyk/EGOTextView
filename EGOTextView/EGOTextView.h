@@ -114,10 +114,14 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;
 @property(nonatomic,copy) NSString *text;
-@property(nonatomic,retain) UIFont *font; // ignored when attributedString is not nil
 @property(nonatomic,getter=isEditable) BOOL editable; //default YES
 @property(nonatomic) NSRange selectedRange;
 @property(nonatomic) NSRange markedRange;
+
+@property(nonatomic,retain) UIFont *font; // ignored when attributedString is not nil
+@property (nonatomic, strong) UIColor *textColor;
+@property (nonatomic) CGFloat leading;  // 行距
+@property (nonatomic, assign) UIEdgeInsets textInsets;  // 文字边距
 
 - (BOOL)hasText;
 

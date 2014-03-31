@@ -27,6 +27,14 @@
 #import "EGOEmojiAttachmentCell.h"
 #import <QuartzCore/QuartzCore.h>
 
+static inline CGFLOAT_TYPE CGFloat_ceil(CGFLOAT_TYPE cgfloat) {
+#if defined(__LP64__) && __LP64__
+    return ceil(cgfloat);
+#else
+    return ceilf(cgfloat);
+#endif
+}
+
 NSString * const EGOTextAttachmentAttributeName = @"com.enormego.EGOTextAttachmentAttribute";
 NSString * const EGOTextAttachmentPlaceholderString = @"\uFFFC";
 
@@ -223,13 +231,16 @@ static float caretHeight;
 
 
 - (void)commonInit {
-    [self setText:@""];
     self.alwaysBounceVertical = YES;
     self.editable = YES;
     self.font = [UIFont systemFontOfSize:17];
+    self.textColor = [UIColor blackColor];
+    self.leading = 0;
+    self.textInsets = UIEdgeInsetsZero;
     self.backgroundColor = [UIColor whiteColor];
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.clipsToBounds = YES;
+    [self setText:@""];
     
     EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
     contentView.autoresizingMask = self.autoresizingMask;
@@ -321,29 +332,14 @@ static float caretHeight;
     if (frameRef!=NULL) {
         CFRelease(frameRef);
     }
-        
-    for (UIView *view in _attachmentViews) {
-        [view removeFromSuperview];
-    }
-    [_attributedString enumerateAttribute: EGOTextAttachmentAttributeName inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
-        
-        if ([value respondsToSelector: @selector(attachmentView)]) {
-            UIView *view = [value attachmentView];
-            [_attachmentViews addObject: view];
-            
-            CGRect rect = [self firstRectForNSRange: range];
-            rect.size = [view frame].size;
-            [view setFrame: rect];
-            [self addSubview: view];
-        }
-    }];
     
     [_textContentView setNeedsDisplay];
     
 }
 
 - (NSString *)text {
-    return _attributedString.string;
+    return [self realString];
+//    return _attributedString.string;
 }
 
 - (void)setFont:(UIFont *)font {
@@ -352,24 +348,41 @@ static float caretHeight;
     
     caretHeight = font.ascender + ABS(font.descender);
     
-    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);
-    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-    [dictionary setValue:(__bridge id)ctFont forKey:(NSString *)kCTFontAttributeName];
-    [dictionary setValue:(id)[UIColor blackColor].CGColor forKey:(NSString *)kCTForegroundColorAttributeName];
-    NSNumber *kern = [NSNumber numberWithFloat:0];
-    [dictionary setValue:kern forKey:(id)kCTKernAttributeName];
-    self.defaultAttributes = dictionary;
-    CFRelease(ctFont);        
+    self.defaultAttributes = nil;
     
     [self textChanged];
     
+}
+
+- (void)setTextColor:(UIColor *)textColor {
+    _textColor = textColor;
+    
+    self.defaultAttributes = nil;
+    
+    [self textChanged];
+}
+
+- (void)setLeading:(CGFloat)leading {
+    _leading = leading;
+    
+    self.defaultAttributes = nil;
+    
+    [self textChanged];
+}
+
+- (void)setTextInsets:(UIEdgeInsets)textInsets {
+    _textInsets = textInsets;
+    
+    self.defaultAttributes = nil;
+    
+    [self textChanged];
 }
 
 - (void)setText:(NSString *)text {
     
     [self.inputDelegate textWillChange:self];       
 
-    NSAttributedString *string = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
+    NSAttributedString *string = [self parseString:text attribute:self.defaultAttributes];
     [self setAttributedString:string];
     
     [self.inputDelegate textDidChange:self];       
@@ -380,11 +393,11 @@ static float caretHeight;
 
     _attributedString = [string copy];
     
-    NSRange range = NSMakeRange(0, _attributedString.string.length);
-    if (!_editing && !_editable) {
+//    NSRange range = NSMakeRange(0, _attributedString.string.length);
+//    if (!_editing && !_editable) {
 //        [self checkLinksForRange:range];
-        [self scanAttachments];
-    }
+//        [self scanAttachments];
+//    }
     
     [self textChanged];
 
@@ -439,6 +452,86 @@ static float caretHeight;
     }
     _editable = editable;
     
+}
+
+- (NSDictionary *)defaultAttributes {
+    if (_defaultAttributes == nil) {
+        NSMutableDictionary *mutableAttributes = [NSMutableDictionary dictionary];
+        if ([NSMutableParagraphStyle class]) {
+            [mutableAttributes setObject:self.font forKey:(NSString *)kCTFontAttributeName];
+            [mutableAttributes setObject:self.textColor forKey:(NSString *)kCTForegroundColorAttributeName];
+            [mutableAttributes setObject:@(0) forKey:(NSString *)kCTKernAttributeName];
+            
+            NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+            paragraphStyle.alignment = NSTextAlignmentLeft;
+            paragraphStyle.lineSpacing = self.leading;
+            //        paragraphStyle.minimumLineHeight = (label.minimumLineHeight > 0 ? label.minimumLineHeight : label.font.lineHeight);
+            //        paragraphStyle.maximumLineHeight = (label.maximumLineHeight > 0 ? label.maximumLineHeight : label.font.lineHeight);
+            //        paragraphStyle.lineHeightMultiple = label.lineHeightMultiple;
+            paragraphStyle.paragraphSpacingBefore = self.textInsets.top;
+            paragraphStyle.paragraphSpacing = self.textInsets.bottom;
+            paragraphStyle.firstLineHeadIndent = self.textInsets.left;
+            paragraphStyle.headIndent = paragraphStyle.firstLineHeadIndent;
+            paragraphStyle.tailIndent = -self.textInsets.right;
+            
+            //        if (label.numberOfLines == 1) {
+            //            paragraphStyle.lineBreakMode = label.lineBreakMode;
+            //        } else {
+            //        }
+            paragraphStyle.lineBreakMode = NSLineBreakByWordWrapping;
+            
+            [mutableAttributes setObject:paragraphStyle forKey:(NSString *)kCTParagraphStyleAttributeName];
+        } else {
+            CTFontRef font = CTFontCreateWithName((__bridge CFStringRef)self.font.fontName, self.font.pointSize, NULL);
+            [mutableAttributes setObject:(__bridge id)font forKey:(NSString *)kCTFontAttributeName];
+            CFRelease(font);
+            
+            [mutableAttributes setObject:(id)[self.textColor CGColor] forKey:(NSString *)kCTForegroundColorAttributeName];
+            [mutableAttributes setObject:@(0) forKey:(NSString *)kCTKernAttributeName];
+            
+            //        CTTextAlignment alignment = CTTextAlignmentFromTTTTextAlignment(label.textAlignment);
+            CTTextAlignment alignment = kCTTextAlignmentLeft;
+            CGFloat lineSpacing = self.leading;
+            //        CGFloat minimumLineHeight = label.minimumLineHeight * label.lineHeightMultiple;
+            //        CGFloat maximumLineHeight = label.maximumLineHeight * label.lineHeightMultiple;
+            CGFloat lineSpacingAdjustment = CGFloat_ceil(self.font.lineHeight - self.font.ascender + self.font.descender);
+            //        CGFloat lineHeightMultiple = label.lineHeightMultiple;
+            CGFloat topMargin = self.textInsets.top;
+            CGFloat bottomMargin = self.textInsets.bottom;
+            CGFloat leftMargin = self.textInsets.left;
+            CGFloat rightMargin = -self.textInsets.right;
+            CGFloat firstLineIndent = leftMargin;
+            
+            CTLineBreakMode lineBreakMode = kCTLineBreakByWordWrapping;
+            //        if (label.numberOfLines == 1) {
+            //            lineBreakMode = CTLineBreakModeFromTTTLineBreakMode(label.lineBreakMode);
+            //        }
+            
+            CTParagraphStyleSetting paragraphStyles[9] = {
+                {.spec = kCTParagraphStyleSpecifierAlignment, .valueSize = sizeof(CTTextAlignment), .value = (const void *)&alignment},
+                {.spec = kCTParagraphStyleSpecifierLineBreakMode, .valueSize = sizeof(CTLineBreakMode), .value = (const void *)&lineBreakMode},
+                {.spec = kCTParagraphStyleSpecifierLineSpacing, .valueSize = sizeof(CGFloat), .value = (const void *)&lineSpacing},
+                //            {.spec = kCTParagraphStyleSpecifierMinimumLineSpacing, .valueSize = sizeof(CGFloat), .value = (const void *)&minimumLineHeight},
+                //            {.spec = kCTParagraphStyleSpecifierMaximumLineSpacing, .valueSize = sizeof(CGFloat), .value = (const void *)&maximumLineHeight},
+                {.spec = kCTParagraphStyleSpecifierLineSpacingAdjustment, .valueSize = sizeof (CGFloat), .value = (const void *)&lineSpacingAdjustment},
+                //            {.spec = kCTParagraphStyleSpecifierLineHeightMultiple, .valueSize = sizeof(CGFloat), .value = (const void *)&lineHeightMultiple},
+                {.spec = kCTParagraphStyleSpecifierParagraphSpacingBefore, .valueSize = sizeof(CGFloat), .value = (const void *)&topMargin},
+                {.spec = kCTParagraphStyleSpecifierParagraphSpacing, .valueSize = sizeof(CGFloat), .value = (const void *)&bottomMargin},
+                {.spec = kCTParagraphStyleSpecifierFirstLineHeadIndent, .valueSize = sizeof(CGFloat), .value = (const void *)&firstLineIndent},
+                {.spec = kCTParagraphStyleSpecifierHeadIndent, .valueSize = sizeof(CGFloat), .value = (const void *)&leftMargin},
+                {.spec = kCTParagraphStyleSpecifierTailIndent, .valueSize = sizeof(CGFloat), .value = (const void *)&rightMargin}
+            };
+            
+            CTParagraphStyleRef paragraphStyle = CTParagraphStyleCreate(paragraphStyles, 9);
+            
+            [mutableAttributes setObject:(__bridge id)paragraphStyle forKey:(NSString *)kCTParagraphStyleAttributeName];
+            
+            CFRelease(paragraphStyle);
+        }
+        
+        _defaultAttributes = [NSDictionary dictionaryWithDictionary:mutableAttributes];
+    }
+    return _defaultAttributes;
 }
 
 #pragma mark - 解析字符串
@@ -1210,11 +1303,12 @@ static float caretHeight;
     if (r.range.length == 0 || r.range.location == NSNotFound) {
         return nil;
     }
-    return ([_attributedString.string substringWithRange:r.range]);
+    NSAttributedString *attributeString = [self.attributedString attributedSubstringFromRange:r.range];
+    return [self realStringFromNSAttributeString:attributeString];
+//    return ([_attributedString.string substringWithRange:r.range]);
 }
 
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
-    
     EGOIndexedRange *r = (EGOIndexedRange *)range;
 
     NSRange selectedNSRange = self.selectedRange;
@@ -1247,12 +1341,13 @@ static float caretHeight;
 }
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
-    if (selectedRange.location == 0 && selectedRange.length == 0 && markedText.length == 0) {
-        // there is another markedText(@""), selectedRange(0, 0) after input non-english workds
-        return;
-    }
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
+    
+    if (selectedRange.location == 0 && selectedRange.length == 0 && markedText.length == 0) {
+        // there is another markedText(@""), selectedRange(0, 0) after input non-english words
+        return;
+    }
     
     if (markedTextRange.location != NSNotFound) {
         if (!markedText)
@@ -1285,7 +1380,6 @@ static float caretHeight;
 }
 
 - (void)unmarkText {
-    
     NSRange markedTextRange = self.markedRange;
     
     if (markedTextRange.location == NSNotFound)
@@ -1544,10 +1638,10 @@ static float caretHeight;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;  
         
-    if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
-        [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
-        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
-    }
+//    if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
+//        [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
+//        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
+//    }
   
 }
 
@@ -1968,13 +2062,13 @@ static float caretHeight;
         
     } else {
         
-        if (index==self.selectedRange.location) {
+//        if (index==self.selectedRange.location) {
             [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
-        } else {
-            if (_editing) {
-                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-            }
-        }
+//        } else {
+//            if (_editing) {
+//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+//            }
+//        }
         
     }
     
@@ -1996,10 +2090,11 @@ static float caretHeight;
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
     
     if ([gestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]) {
-        UIMenuController *menuController = [UIMenuController sharedMenuController];
-        if ([menuController isMenuVisible]) {
-            [menuController setMenuVisible:NO animated:NO];
-        }
+        // 单击 menu不消失
+//        UIMenuController *menuController = [UIMenuController sharedMenuController];
+//        if ([menuController isMenuVisible]) {
+//            [menuController setMenuVisible:NO animated:NO];
+//        }
     }
     
     return NO;
@@ -2575,8 +2670,6 @@ static const NSTimeInterval kBlinkRate = 1.0;
 @synthesize selectionType=_selectionType;
 @synthesize type=_type;
 
-static const CGFloat kLoupeScale = 1.2f;
-static const CGFloat kMagnifyScale = 1.0f;
 static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
 - (id)initWithFrame:(CGRect)frame {    
