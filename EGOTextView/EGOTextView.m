@@ -603,18 +603,6 @@ static float caretHeight;
     self.selectedRange = selectedNSRange;
 }
 
-- (UIFont *)fontOfAttributes:(NSDictionary *)attributes {
-    if ([NSMutableParagraphStyle class]) {
-        return [attributes objectForKey:(NSString *)kCTFontAttributeName];
-    } else {
-        CTFontRef ctFont = (__bridge CTFontRef)([attributes objectForKey:(NSString *)kCTFontAttributeName]);
-        CGFloat pointSize = CTFontGetSize(ctFont);
-        NSString *fontPostScriptName = (NSString *)CFBridgingRelease(CTFontCopyPostScriptName(ctFont));
-        UIFont *fontFromCTFont = [UIFont fontWithName:fontPostScriptName size:pointSize];
-        return fontFromCTFont;
-    }
-}
-
 - (CGSize)imageSizeWithFont:(UIFont *)font {
     return CGSizeMake([font pointSize], [font pointSize]);
 }
@@ -625,7 +613,7 @@ static float caretHeight;
         return all;
     }
     
-    UIFont *textFont = [self fontOfAttributes:attributes];
+    UIFont *textFont = self.font;
     CGSize imageSize = [self imageSizeWithFont:textFont];
     
     NSRegularExpression* regex = [[NSRegularExpression alloc] initWithPattern:@"\\[([a-zA-Z0-9_]+)\\]"
@@ -741,9 +729,8 @@ static float caretHeight;
 
 }
 
-- (void)drawBoundingRangeAsSelection:(NSRange)selectionRange cornerRadius:(CGFloat)cornerRadius {
-	
-    if (selectionRange.length == 0 || selectionRange.location == NSNotFound) {
+- (void)drawBoundingRange:(NSRange)rg cornerRadius:(CGFloat)cornerRadius isSelect:(BOOL)isSelect {
+    if (rg.length == 0 || rg.location == NSNotFound) {
         return;
     }
     
@@ -754,14 +741,14 @@ static float caretHeight;
     NSInteger count = [lines count];
     
     for (int i = 0; i < count; i++) {
-       
+        
         CTLineRef line = (__bridge CTLineRef) [lines objectAtIndex:i];
         CFRange lineRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(lineRange.location==kCFNotFound ? NSNotFound : lineRange.location, lineRange.length);
-        NSRange intersection = [self rangeIntersection:range withSecond:selectionRange];
+        NSRange intersection = [self rangeIntersection:range withSecond:rg];
         
         if (intersection.location != NSNotFound && intersection.length > 0) {
-
+            
             CGFloat xStart = CTLineGetOffsetForStringIndex(line, intersection.location, NULL);
             CGFloat xEnd = CTLineGetOffsetForStringIndex(line, intersection.location + intersection.length, NULL);
             
@@ -769,20 +756,30 @@ static float caretHeight;
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            CGRect selectionRect = CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
+            CGRect selectionRect = CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + descent);
             
-            if (range.length==1) {
-                selectionRect.size.width = _textContentView.bounds.size.width;
+            if (isSelect) {
+                // selectionMenu 好像有问题?
+                if (range.length==1) {
+                    selectionRect.size.width = _textContentView.bounds.size.width;
+                }
             }
             
             [pathRects addObject:NSStringFromCGRect(selectionRect)];
             
-        } 
-    }  
+        }
+    }
     
     [self drawPathFromRects:pathRects cornerRadius:cornerRadius];
     free(origins);
+}
 
+- (void)drawBoundingRangeAsSelection:(NSRange)selectionRange cornerRadius:(CGFloat)cornerRadius {
+	[self drawBoundingRange:selectionRange cornerRadius:cornerRadius isSelect:YES];
+}
+
+- (void)drawBoundingRangeAsMarked:(NSRange)markedRange cornerRadius:(CGFloat)cornerRadius {
+	[self drawBoundingRange:markedRange cornerRadius:cornerRadius isSelect:NO];
 }
 
 - (void)drawContentInRect:(CGRect)rect {    
@@ -790,6 +787,10 @@ static float caretHeight;
     [[UIColor colorWithRed:0.8f green:0.8f blue:0.8f alpha:1.0f] setFill];
     [self drawBoundingRangeAsSelection:_linkRange cornerRadius:2.0f];
     [[EGOTextView selectionColor] setFill];
+    [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
+    if (self.markedRange.location != NSNotFound && self.markedRange.length > 0) {
+        [self drawBoundingRangeAsMarked:self.markedRange cornerRadius:0.0f];
+    }
     [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
     [[EGOTextView spellingSelectionColor] setFill];
     [self drawBoundingRangeAsSelection:self.correctionRange cornerRadius:2.0f];
@@ -991,7 +992,6 @@ static float caretHeight;
         if (index >= range.location && index <= range.location+range.length) {
             
             if (range.length > 1) {
-                
                 [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
                     
                     if (index - subStringRange.location <= subStringRange.length) {
@@ -1001,6 +1001,8 @@ static float caretHeight;
                     
                 }];
                 
+            } else {
+                returnRange = NSMakeRange(NSNotFound, 0);
             }
 
         }
@@ -1013,7 +1015,6 @@ static float caretHeight;
 - (CGRect)caretRectForIndex:(NSInteger)index {  
         
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
-    NSLog(@"_textContentView.bounds: %@", NSStringFromCGRect(_textContentView.bounds));
     // no text / first index
     if (_attributedString.length == 0 || index == 0) {
 //        CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);

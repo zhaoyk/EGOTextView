@@ -41,7 +41,7 @@
     if (_egoTextView==nil) {
         
         EGOTextView *view = [[EGOTextView alloc] initWithFrame:CGRectMake(10, 10, 300, 200)];
-        view.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1];
+        view.backgroundColor = [UIColor whiteColor];
         view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         view.delegate = (id<EGOTextViewDelegate>)self;
         [self.view addSubview:view];
