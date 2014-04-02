@@ -122,6 +122,7 @@
 - (BOOL)hasText;
 
 - (BOOL)resignFirstResponderKeepEditing; // keep caret, can add image
+- (BOOL)becomeFirstResponderWithoutKeyboard; // show caret, but not show keyboard
 - (void)addImageWithName:(NSString *)name;
 
 - (NSString *)realString;

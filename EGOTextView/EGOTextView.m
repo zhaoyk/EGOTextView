@@ -2030,7 +2030,7 @@ static float caretHeight;
     
     if (_editable && ![self isFirstResponder]) {
         [self becomeFirstResponder];
-//        return;
+        //        return;
     }
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
@@ -2166,6 +2166,20 @@ static float caretHeight;
     return [super becomeFirstResponder];
 }
 
+- (BOOL)becomeFirstResponderWithoutKeyboard {
+    if (_editable) {
+        
+        _editing = YES;
+        
+        if (_delegateRespondsToDidBeginEditing) {
+            [self.delegate egoTextViewDidBeginEditing:self];
+        }
+        
+        [self selectionChanged];
+    }
+    return YES;
+}
+
 - (BOOL)canResignFirstResponder {
     
     if (_editable && _delegateRespondsToShouldEndEditing) {
@@ -2198,7 +2212,6 @@ static float caretHeight;
 	return [super resignFirstResponder];
     
 }
-
 
 /////////////////////////////////////////////////////////////////////////////
 // MARK: -
