@@ -121,6 +121,7 @@
 
 - (BOOL)hasText;
 
+- (BOOL)resignFirstResponderKeepEditing; // keep caret, can add image
 - (void)addImageWithName:(NSString *)name;
 
 - (NSString *)realString;

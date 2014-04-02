@@ -2194,6 +2194,12 @@ static float caretHeight;
     
 }
 
+- (BOOL)resignFirstResponderKeepEditing {
+    
+	return [super resignFirstResponder];
+    
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // MARK: -

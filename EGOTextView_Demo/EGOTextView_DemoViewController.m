@@ -8,7 +8,6 @@
 
 #import "EGOTextView_DemoViewController.h"
 #import "EGOTextView.h"
-#import "EGOEmojiAttachmentCell.h"
 
 #import <QuartzCore/QuartzCore.h>
 
@@ -110,7 +109,7 @@
 - (void)rbtClick {
     //    self.egoTextView.attributedString
     NSLog(@"%@", [self.egoTextView realString]);
-    [self.egoTextView resignFirstResponder];
+    [self.egoTextView resignFirstResponderKeepEditing];
 }
 
 #pragma mark -
