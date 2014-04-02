@@ -27,10 +27,6 @@
 #import <UIKit/UITextChecker.h>
 #include <objc/runtime.h>
 
-
-extern NSString * const EGOTextAttachmentAttributeName;
-extern NSString * const EGOTextAttachmentPlaceholderString;
-
 @class EGOTextView;
 @protocol EGOTextViewDelegate <NSObject, UIScrollViewDelegate>
 @optional
@@ -81,17 +77,17 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     BOOL _delegateRespondsToDidSelectURL;
     
     NSAttributedString  *_attributedString;
-    UIFont              *_font; 
+    UIFont              *_font;
     BOOL                _editing;
-    BOOL                _editable; 
+    BOOL                _editable;
     BOOL                _spellCheck;
     BOOL                _dataDetectors;
     
-    NSRange             _markedRange; 
+    NSRange             _markedRange;
     NSRange             _selectedRange;
     NSRange             _correctionRange;
     NSRange             _linkRange;
-
+    
     CTFramesetterRef    _framesetter;
     CTFrameRef          _frame;
     
@@ -105,11 +101,11 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 
 @property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
-@property(nonatomic) UITextAutocorrectionType autocorrectionType;        
-@property(nonatomic) UIKeyboardType keyboardType;                       
-@property(nonatomic) UIKeyboardAppearance keyboardAppearance;             
-@property(nonatomic) UIReturnKeyType returnKeyType;                    
-@property(nonatomic) BOOL enablesReturnKeyAutomatically; 
+@property(nonatomic) UITextAutocorrectionType autocorrectionType;
+@property(nonatomic) UIKeyboardType keyboardType;
+@property(nonatomic) UIKeyboardAppearance keyboardAppearance;
+@property(nonatomic) UIReturnKeyType returnKeyType;
+@property(nonatomic) BOOL enablesReturnKeyAutomatically;
 
 @property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;

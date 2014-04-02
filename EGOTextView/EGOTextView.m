@@ -24,7 +24,7 @@
 //
 
 #import "EGOTextView.h"
-#import "EGOEmojiAttachmentCell.h"
+#import "SFCoreTextImageCell.h"
 #import <QuartzCore/QuartzCore.h>
 
 static inline CGFLOAT_TYPE CGFloat_ceil(CGFLOAT_TYPE cgfloat) {
@@ -34,9 +34,6 @@ static inline CGFLOAT_TYPE CGFloat_ceil(CGFLOAT_TYPE cgfloat) {
     return ceilf(cgfloat);
 #endif
 }
-
-NSString * const EGOTextAttachmentAttributeName = @"com.enormego.EGOTextAttachmentAttribute";
-NSString * const EGOTextAttachmentPlaceholderString = @"\uFFFC";
 
 typedef enum {
     EGOWindowLoupe = 0,
@@ -54,26 +51,22 @@ static void AttachmentRunDelegateDealloc(void *refCon) {
 }
 
 static CGSize AttachmentRunDelegateGetSize(void *refCon) {
-    id <EGOTextAttachmentCell> cell = (__bridge id<EGOTextAttachmentCell>)(refCon);
-    if ([cell respondsToSelector: @selector(attachmentSize)]) {
-        return [cell attachmentSize];
-    } else {
-        return [[cell attachmentView] frame].size;
-    }
+    SFCoreTextImageCell *cell = (__bridge SFCoreTextImageCell *)(refCon);
+    return cell.size;
 }
 
 static CGFloat AttachmentRunDelegateGetAscent(void *refCon) {
-    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    SFCoreTextImageCell *cell = (__bridge SFCoreTextImageCell *)(refCon);
     return cell.ascent;
 }
 
 static CGFloat AttachmentRunDelegateGetDescent(void *refCon) {
-    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    SFCoreTextImageCell *cell = (__bridge SFCoreTextImageCell *)(refCon);
     return cell.descent;
 }
 
 static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
-    EGOEmojiAttachmentCell *cell = (__bridge EGOEmojiAttachmentCell *)refCon;
+    SFCoreTextImageCell *cell = (__bridge SFCoreTextImageCell *)(refCon);
     return cell.size.width;
 }
 
@@ -281,7 +274,7 @@ static float caretHeight;
 }
 
 - (void)clearPreviousLayoutInformation {
-        
+    
     if (_framesetter != NULL) {
         CFRelease(_framesetter);
         _framesetter = NULL;
@@ -296,15 +289,15 @@ static float caretHeight;
 - (CGFloat)boundingWidthForHeight:(CGFloat)height {
     
     CGSize suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(_framesetter, CFRangeMake(0, 0), NULL, CGSizeMake(CGFLOAT_MAX, height), NULL);
-    return suggestedSize.width;   
-
+    return suggestedSize.width;
+    
 }
 
 - (CGFloat)boundingHeightForWidth:(CGFloat)width {
     
     CGSize suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(_framesetter, CFRangeMake(0, 0), NULL, CGSizeMake(width, CGFLOAT_MAX), NULL);
     return suggestedSize.height;
-
+    
 }
 
 - (void)textChanged {
@@ -312,21 +305,21 @@ static float caretHeight;
     if ([[UIMenuController sharedMenuController] isMenuVisible]) {
         [[UIMenuController sharedMenuController] setMenuVisible:NO animated:NO];
     }
-           
+    
     CTFramesetterRef framesetter = _framesetter;
     _framesetter = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)self.attributedString);
     if (framesetter!=NULL) {
-        CFRelease(framesetter); 
+        CFRelease(framesetter);
     }
     
     CGRect rect = _textContentView.frame;
     CGFloat height = [self boundingHeightForWidth:rect.size.width];
     rect.size.height = height+self.font.lineHeight;
-    _textContentView.frame = rect;    
+    _textContentView.frame = rect;
     self.contentSize = CGSizeMake(self.frame.size.width, rect.size.height+(self.font.lineHeight*2));
-
+    
     UIBezierPath *path = [UIBezierPath bezierPathWithRect:_textContentView.bounds];
-
+    
     CTFrameRef frameRef = _frame;
     _frame =  CTFramesetterCreateFrame(_framesetter, CFRangeMake(0, 0), [path CGPath], NULL);
     if (frameRef!=NULL) {
@@ -339,7 +332,7 @@ static float caretHeight;
 
 - (NSString *)text {
     return [self realString];
-//    return _attributedString.string;
+    //    return _attributedString.string;
 }
 
 - (void)setFont:(UIFont *)font {
@@ -380,31 +373,31 @@ static float caretHeight;
 
 - (void)setText:(NSString *)text {
     
-    [self.inputDelegate textWillChange:self];       
-
+    [self.inputDelegate textWillChange:self];
+    
     NSAttributedString *string = [self parseString:text attribute:self.defaultAttributes];
     [self setAttributedString:string];
     
-    [self.inputDelegate textDidChange:self];       
-
+    [self.inputDelegate textDidChange:self];
+    
 }
 
 - (void)setAttributedString:(NSAttributedString*)string {
-
+    
     _attributedString = [string copy];
     
-//    NSRange range = NSMakeRange(0, _attributedString.string.length);
-//    if (!_editing && !_editable) {
-//        [self checkLinksForRange:range];
-//        [self scanAttachments];
-//    }
+    //    NSRange range = NSMakeRange(0, _attributedString.string.length);
+    //    if (!_editing && !_editable) {
+    //        [self checkLinksForRange:range];
+    //        [self scanAttachments];
+    //    }
     
     [self textChanged];
-
+    
     if (_delegateRespondsToDidChange) {
         [self.delegate egoTextViewDidChange:self];
     }
-        
+    
 }
 
 - (void)setDelegate:(id<EGOTextViewDelegate>)aDelegate {
@@ -541,13 +534,13 @@ static float caretHeight;
     NSMutableString *s = [[NSMutableString alloc] init];
     __block NSUInteger index = 0;
     
-    [attributeString enumerateAttribute:EGOTextAttachmentAttributeName inRange:NSMakeRange(0, attributeString.length) options:0 usingBlock:^(id value, NSRange range, BOOL *stop) {
+    [attributeString enumerateAttribute:SFCoreTextImageAttributeKey inRange:NSMakeRange(0, attributeString.length) options:0 usingBlock:^(id value, NSRange range, BOOL *stop) {
         if (value != nil) {
             if (range.location > index) {
                 [s appendString:[realString substringWithRange:NSMakeRange(index, range.location - index)]];
             }
-            EGOEmojiAttachmentCell *cell = value;
-            [s appendString:[NSString stringWithFormat:@"[%@]", [cell placeHolderString]]];
+            SFCoreTextImageCell *cell = value;
+            [s appendString:[NSString stringWithFormat:@"[%@]", [cell name]]];
             index = range.location + range.length;
         }
     }];
@@ -597,7 +590,7 @@ static float caretHeight;
         selectedNSRange.location += 1;
         
     }
-        
+    
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;
@@ -629,7 +622,7 @@ static float caretHeight;
         }
         
         NSString *name = [text substringWithRange:[result rangeAtIndex:1]];
-        EGOEmojiAttachmentCell *cell = [EGOEmojiAttachmentCell cellWithName:name];
+        SFCoreTextImageCell *cell = [SFCoreTextImageCell cellWithName:name];
         cell.size = imageSize;
         cell.descent = textFont.descender;
         cell.ascent = textFont.ascender;
@@ -644,8 +637,8 @@ static float caretHeight;
         
         NSMutableDictionary *cellAttributes = [NSMutableDictionary dictionaryWithDictionary:attributes];
         [cellAttributes setObject:(__bridge id)runDelegate forKey:(NSString *)kCTRunDelegateAttributeName];
-        [cellAttributes setObject:cell forKey:EGOTextAttachmentAttributeName];
-        NSAttributedString *imgString = [[NSAttributedString alloc] initWithString:EGOTextAttachmentPlaceholderString attributes:cellAttributes];
+        [cellAttributes setObject:cell forKey:SFCoreTextImageAttributeKey];
+        NSAttributedString *imgString = [[NSAttributedString alloc] initWithString:SFCoreTextImagePlaceHolderString attributes:cellAttributes];
         CFRelease(runDelegate);
         [all appendAttributedString:imgString];
         
@@ -665,7 +658,7 @@ static float caretHeight;
 /////////////////////////////////////////////////////////////////////////////
 
 - (NSRange)rangeIntersection:(NSRange)first withSecond:(NSRange)second {
-
+    
     NSRange result = NSMakeRange(NSNotFound, 0);
     
     if (first.location > second.location) {
@@ -680,7 +673,7 @@ static float caretHeight;
         result.length = end - result.location;
     }
     
-    return result;    
+    return result;
 }
 
 - (void)drawPathFromRects:(NSArray*)array cornerRadius:(CGFloat)cornerRadius {
@@ -690,7 +683,7 @@ static float caretHeight;
     CGMutablePathRef _path = CGPathCreateMutable();
     
     CGRect firstRect = CGRectFromString([array lastObject]);
-    CGRect lastRect = CGRectFromString([array objectAtIndex:0]);  
+    CGRect lastRect = CGRectFromString([array objectAtIndex:0]);
     if ([array count]>1) {
         lastRect.size.width = _textContentView.bounds.size.width-lastRect.origin.x;
     }
@@ -704,7 +697,7 @@ static float caretHeight;
     }
     
     if ([array count] > 1) {
-                
+        
         CGRect fillRect = CGRectZero;
         
         CGFloat originX = ([array count]==2) ? MIN(CGRectGetMinX(firstRect), CGRectGetMinX(lastRect)) : 0.0f;
@@ -719,14 +712,14 @@ static float caretHeight;
         } else {
             CGPathAddRect(_path, NULL, fillRect);
         }
-
+        
     }
     
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     CGContextAddPath(ctx, _path);
     CGContextFillPath(ctx);
     CGPathRelease(_path);
-
+    
 }
 
 - (void)drawBoundingRange:(NSRange)rg cornerRadius:(CGFloat)cornerRadius isSelect:(BOOL)isSelect {
@@ -782,8 +775,8 @@ static float caretHeight;
 	[self drawBoundingRange:markedRange cornerRadius:cornerRadius isSelect:NO];
 }
 
-- (void)drawContentInRect:(CGRect)rect {    
-
+- (void)drawContentInRect:(CGRect)rect {
+    
     [[UIColor colorWithRed:0.8f green:0.8f blue:0.8f alpha:1.0f] setFill];
     [self drawBoundingRangeAsSelection:_linkRange cornerRadius:2.0f];
     [[EGOTextView selectionColor] setFill];
@@ -794,15 +787,15 @@ static float caretHeight;
     [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
     [[EGOTextView spellingSelectionColor] setFill];
     [self drawBoundingRangeAsSelection:self.correctionRange cornerRadius:2.0f];
-        
+    
 	CGPathRef framePath = CTFrameGetPath(_frame);
 	CGRect frameRect = CGPathGetBoundingBox(framePath);
-        
+    
 	NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     NSInteger count = [lines count];
-
+    
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
-    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);    
+    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);
 	CGContextRef ctx = UIGraphicsGetCurrentContext();
 	for (int i = 0; i < count; i++) {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex((CFArrayRef)lines, i);
@@ -813,7 +806,7 @@ static float caretHeight;
         for (CFIndex runsIndex = 0; runsIndex < runsCount; runsIndex++) {
             CTRunRef run = CFArrayGetValueAtIndex(runs, runsIndex);
             CFDictionaryRef attributes = CTRunGetAttributes(run);
-            EGOEmojiAttachmentCell *cell = [(__bridge id)attributes objectForKey: EGOTextAttachmentAttributeName];
+            SFCoreTextImageCell *cell = [(__bridge id)attributes objectForKey: SFCoreTextImageAttributeKey];
             if (cell != nil) {
                 CGPoint position;
                 CTRunGetPositions(run, CFRangeMake(0, 1), &position);
@@ -835,7 +828,7 @@ static float caretHeight;
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     NSInteger count = [lines count];
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
-    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins); 
+    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);
     
     __block NSRange returnRange = NSMakeRange(_attributedString.length, 0);
     
@@ -849,7 +842,7 @@ static float caretHeight;
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
             CFIndex cfIndex = CTLineGetStringIndexForPosition(line, convertedPoint);
             NSInteger index = cfIndex == kCFNotFound ? NSNotFound : cfIndex;
-                    
+            
             if(range.location==NSNotFound)
                 break;
             
@@ -865,10 +858,10 @@ static float caretHeight;
             
             if (index == range.location) {
                 returnRange = NSMakeRange(range.location, 0);
-                break;                
+                break;
             }
             
-        
+            
             if (index >= (range.location+range.length)) {
                 
                 if (range.length > 1 && [_attributedString.string characterAtIndex:(range.location+range.length)-1] == '\n') {
@@ -882,14 +875,14 @@ static float caretHeight;
                     break;
                     
                 }
-               
+                
             }
             
             [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
                 
                 
                 if (NSLocationInRange(index, enclosingRange)) {
-                                    
+                    
                     if (index > (enclosingRange.location+(enclosingRange.length/2))) {
                         
                         returnRange = NSMakeRange(subStringRange.location+subStringRange.length, 0);
@@ -909,24 +902,24 @@ static float caretHeight;
             
         }
     }
-
+    
     return returnRange.location;
 }
 
-- (NSInteger)closestIndexToPoint:(CGPoint)point {	
-
+- (NSInteger)closestIndexToPoint:(CGPoint)point {
+    
     point = [self convertPoint:point toView:_textContentView];
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     NSInteger count = [lines count];
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
-    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);    
+    CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);
     CFIndex index = kCFNotFound;
     
     for (int i = 0; i < lines.count; i++) {
         if (point.y > origins[i].y) {
             CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
-            index = CTLineGetStringIndexForPosition(line, convertedPoint);  
+            index = CTLineGetStringIndexForPosition(line, convertedPoint);
             break;
         }
     }
@@ -945,17 +938,17 @@ static float caretHeight;
     __block NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     
     CGPoint *origins = (CGPoint*)malloc([lines count] * sizeof(CGPoint));
-    CTFrameGetLineOrigins(_frame, CFRangeMake(0, [lines count]), origins);    
+    CTFrameGetLineOrigins(_frame, CFRangeMake(0, [lines count]), origins);
     __block NSRange returnRange = NSMakeRange(NSNotFound, 0);
-
+    
     for (int i = 0; i < lines.count; i++) {
         
         if (point.y > origins[i].y) {
-
+            
             CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
             CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
             NSInteger index = CTLineGetStringIndexForPosition(line, convertedPoint);
-           
+            
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
             
@@ -980,7 +973,7 @@ static float caretHeight;
 - (NSRange)characterRangeAtIndex:(NSInteger)index {
     
     __block NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
-    NSInteger count = [lines count];  
+    NSInteger count = [lines count];
     __block NSRange returnRange = NSMakeRange(NSNotFound, 0);
     
     for (int i=0; i < count; i++) {
@@ -1004,7 +997,7 @@ static float caretHeight;
             } else {
                 returnRange = NSMakeRange(NSNotFound, 0);
             }
-
+            
         }
     }
     
@@ -1012,25 +1005,25 @@ static float caretHeight;
     
 }
 
-- (CGRect)caretRectForIndex:(NSInteger)index {  
-        
+- (CGRect)caretRectForIndex:(NSInteger)index {
+    
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     // no text / first index
     if (_attributedString.length == 0 || index == 0) {
-//        CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
+        //        CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
         CGPoint origin = CGPointMake(0, 0);
         return CGRectMake(origin.x, origin.y, 3, caretHeight);
-    }    
-
+    }
+    
     // last index is newline
     if (index == _attributedString.length && [_attributedString.string characterAtIndex:(index - 1)] == '\n' ) {
-       
+        
         CTLineRef line = (__bridge CTLineRef)[lines lastObject];
         CFRange range = CTLineGetStringRange(line);
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         CGFloat ascent, descent;
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-
+        
         CGPoint origin;
         CGPoint *origins = (CGPoint*)malloc(1 * sizeof(CGPoint));
         CTFrameGetLineOrigins(_frame, CFRangeMake([lines count]-1, 0), origins);
@@ -1041,41 +1034,41 @@ static float caretHeight;
         return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, caretHeight);
         
     }
-
+    
     index = MAX(index, 0);
     index = MIN(_attributedString.string.length, index);
-
-    NSInteger count = [lines count];  
+    
+    NSInteger count = [lines count];
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
     CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);
     CGRect returnRect = CGRectZero;
-        
+    
     for (int i = 0; i < count; i++) {
-
+        
         CTLineRef line = (__bridge CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
-                
+        
         if (index >= range.location && index <= range.location+range.length) {
-
+            
             CGFloat ascent, descent, xPos;
-            xPos = CTLineGetOffsetForStringIndex((CTLineRef)[lines objectAtIndex:i], index, NULL); 
+            xPos = CTLineGetOffsetForStringIndex((CTLineRef)[lines objectAtIndex:i], index, NULL);
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             CGPoint origin = origins[i];
-
+            
             if (_selectedRange.length>0 && index != _selectedRange.location && range.length == 1) {
                 
                 xPos = _textContentView.bounds.size.width - 3.0f; // selection of entire line
                 
             } else if ([_attributedString.string characterAtIndex:index-1] == '\n' && range.length == 1) {
-               
+                
                 xPos = 0.0f; // empty line
-
+                
             }
             
             returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, caretHeight);
-
-        } 
+            
+        }
         
     }
     
@@ -1094,13 +1087,13 @@ static float caretHeight;
     CGRect returnRect = CGRectNull;
     
     for (int i = 0; i < count; i++) {
-       
+        
         CTLineRef line = (__bridge CTLineRef) [lines objectAtIndex:i];
         CFRange lineRange = CTLineGetStringRange(line);
         NSInteger localIndex = index - lineRange.location;
-      
+        
         if (localIndex >= 0 && localIndex < lineRange.length) {
-
+            
             NSInteger finalIndex = MIN(lineRange.location + lineRange.length, range.location + range.length);
             CGFloat xStart = CTLineGetOffsetForStringIndex(line, index, NULL);
             CGFloat xEnd = CTLineGetOffsetForStringIndex(line, finalIndex, NULL);
@@ -1124,7 +1117,7 @@ static float caretHeight;
 /////////////////////////////////////////////////////////////////////////////
 
 - (void)selectionChanged {
-   
+    
     if (!_editing) {
         [_caretView removeFromSuperview];
     }
@@ -1132,7 +1125,7 @@ static float caretHeight;
     _ignoreSelectionMenu = NO;
     
     if (self.selectedRange.length == 0) {
-    
+        
         if (_selectionView!=nil) {
             [_selectionView removeFromSuperview];
             _selectionView=nil;
@@ -1174,7 +1167,7 @@ static float caretHeight;
         [_selectionView setBeginCaret:begin endCaret:end];
         [_textContentView setNeedsDisplay];
         
-    }    
+    }
     
     if (self.markedRange.location != NSNotFound) {
         [_textContentView setNeedsDisplay];
@@ -1190,7 +1183,7 @@ static float caretHeight;
     return _selectedRange;
 }
 
-- (void)setMarkedRange:(NSRange)range {    
+- (void)setMarkedRange:(NSRange)range {
     _markedRange = range;
     //[self selectionChanged];
 }
@@ -1201,7 +1194,7 @@ static float caretHeight;
 }
 
 - (void)setCorrectionRange:(NSRange)range {
-
+    
     if (NSEqualRanges(range, _correctionRange) && range.location == NSNotFound && range.length == 0) {
         _correctionRange = range;
         return;
@@ -1216,7 +1209,7 @@ static float caretHeight;
         
         [self removeCorrectionAttributesForRange:_correctionRange];
         [self showCorrectionMenuForRange:_correctionRange];
-
+        
         
     } else {
         
@@ -1226,7 +1219,7 @@ static float caretHeight;
         }
         
     }
-   
+    
     [_textContentView setNeedsDisplay];
     
 }
@@ -1254,11 +1247,11 @@ static float caretHeight;
     }
     
     [_textContentView setNeedsDisplay];
-
+    
 }
 
 - (void)setLinkRangeFromTextCheckerResults:(NSTextCheckingResult*)results {
-            
+    
     if (_linkRange.length>0) {
         UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
         [actionSheet showInView:self];
@@ -1270,7 +1263,7 @@ static float caretHeight;
     static UIColor *color = nil;
     if (color == nil) {
         color = [UIColor colorWithRed:0.800f green:0.867f blue:0.929f alpha:1.0f];
-    }    
+    }
     return color;
 }
 
@@ -1306,12 +1299,12 @@ static float caretHeight;
     }
     NSAttributedString *attributeString = [self.attributedString attributedSubstringFromRange:r.range];
     return [self realStringFromNSAttributeString:attributeString];
-//    return ([_attributedString.string substringWithRange:r.range]);
+    //    return ([_attributedString.string substringWithRange:r.range]);
 }
 
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
     EGOIndexedRange *r = (EGOIndexedRange *)range;
-
+    
     NSAttributedString *newString = [self parseString:text attribute:self.defaultAttributes];
     
     NSRange selectedNSRange = self.selectedRange;
@@ -1339,7 +1332,7 @@ static float caretHeight;
 }
 
 - (UITextRange *)markedTextRange {
-    return [EGOIndexedRange rangeWithNSRange:self.markedRange];    
+    return [EGOIndexedRange rangeWithNSRange:self.markedRange];
 }
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
@@ -1377,7 +1370,7 @@ static float caretHeight;
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;    
+    self.selectedRange = selectedNSRange;
     
 }
 
@@ -1388,7 +1381,7 @@ static float caretHeight;
         return;
     
     markedTextRange.location = NSNotFound;
-    self.markedRange = markedTextRange;   
+    self.markedRange = markedTextRange;
     
 }
 
@@ -1403,17 +1396,17 @@ static float caretHeight;
 }
 
 - (UITextRange*)textRangeFromPosition:(UITextPosition *)fromPosition toPosition:(UITextPosition *)toPosition {
-
+    
     EGOIndexedPosition *from = (EGOIndexedPosition *)fromPosition;
-    EGOIndexedPosition *to = (EGOIndexedPosition *)toPosition;    
+    EGOIndexedPosition *to = (EGOIndexedPosition *)toPosition;
     NSRange range = NSMakeRange(MIN(from.index, to.index), ABS(to.index - from.index));
-    return [EGOIndexedRange rangeWithNSRange:range];    
+    return [EGOIndexedRange rangeWithNSRange:range];
     
 }
 
 - (UITextPosition*)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
-
-    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;    
+    
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
     NSInteger end = pos.index + offset;
 	
     if (end > _attributedString.length || end < 0)
@@ -1423,7 +1416,7 @@ static float caretHeight;
 }
 
 - (UITextPosition*)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
-
+    
     EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
     NSInteger newPos = pos.index;
     
@@ -1435,14 +1428,14 @@ static float caretHeight;
             newPos -= offset;
             break;
         UITextLayoutDirectionUp: // not supported right now
-            break; 
+            break;
         UITextLayoutDirectionDown: // not supported right now
             break;
         default:
             break;
-
+            
     }
-    	
+    
     if (newPos < 0)
         newPos = 0;
     
@@ -1483,7 +1476,7 @@ static float caretHeight;
 // MARK: UITextInput - Text Layout, writing direction and position
 
 - (UITextPosition *)positionWithinRange:(UITextRange *)range farthestInDirection:(UITextLayoutDirection)direction {
-
+    
     EGOIndexedRange *r = (EGOIndexedRange *)range;
     NSInteger pos = r.range.location;
     
@@ -1493,16 +1486,16 @@ static float caretHeight;
             pos = r.range.location;
             break;
         case UITextLayoutDirectionRight:
-        case UITextLayoutDirectionDown:            
+        case UITextLayoutDirectionDown:
             pos = r.range.location + r.range.length;
             break;
     }
     
-    return [EGOIndexedPosition positionWithIndex:pos];        
+    return [EGOIndexedPosition positionWithIndex:pos];
 }
 
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction {
-
+    
     EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
     NSRange result = NSMakeRange(pos.index, 1);
     
@@ -1512,12 +1505,12 @@ static float caretHeight;
             result = NSMakeRange(pos.index - 1, 1);
             break;
         case UITextLayoutDirectionRight:
-        case UITextLayoutDirectionDown:            
+        case UITextLayoutDirectionDown:
             result = NSMakeRange(pos.index, 1);
             break;
     }
     
-    return [EGOIndexedRange rangeWithNSRange:result];   
+    return [EGOIndexedRange rangeWithNSRange:result];
 }
 
 - (UITextWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction {
@@ -1532,14 +1525,14 @@ static float caretHeight;
 
 - (CGRect)firstRectForRange:(UITextRange *)range {
     
-    EGOIndexedRange *r = (EGOIndexedRange *)range;    
-    return [self firstRectForNSRange:r.range];   
+    EGOIndexedRange *r = (EGOIndexedRange *)range;
+    return [self firstRectForNSRange:r.range];
 }
 
 - (CGRect)caretRectForPosition:(UITextPosition *)position {
     
     EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
-	return [self caretRectForIndex:pos.index];    
+	return [self caretRectForIndex:pos.index];
 }
 
 - (UIView *)textInputView {
@@ -1572,7 +1565,7 @@ static float caretHeight;
 // MARK: UITextInput - Styling Information
 
 - (NSDictionary*)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction {
-
+    
     EGOIndexedPosition *pos = (EGOIndexedPosition*)position;
     NSInteger index = MAX(pos.index, 0);
     index = MIN(index, _attributedString.length-1);
@@ -1586,7 +1579,7 @@ static float caretHeight;
     [dictionary setObject:font forKey:UITextInputTextFontKey];
     
     return dictionary;
-
+    
 }
 
 
@@ -1614,13 +1607,13 @@ static float caretHeight;
         selectedNSRange.length = 0;
         selectedNSRange.location = (self.correctionRange.location+newString.length);
         self.correctionRange = NSMakeRange(NSNotFound, 0);
-
+        
     } else if (markedTextRange.location != NSNotFound) {
         
         [_mutableAttributedString replaceCharactersInRange:markedTextRange withAttributedString:newString];
         selectedNSRange.location = markedTextRange.location + newString.length;
         selectedNSRange.length = 0;
-        markedTextRange = NSMakeRange(NSNotFound, 0); 
+        markedTextRange = NSMakeRange(NSNotFound, 0);
         
     } else if (selectedNSRange.length > 0) {
         
@@ -1630,7 +1623,7 @@ static float caretHeight;
         
     } else {
         
-        [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];        
+        [_mutableAttributedString insertAttributedString:newString atIndex:selectedNSRange.location];
         selectedNSRange.location += newString.length;
         
     }
@@ -1638,13 +1631,13 @@ static float caretHeight;
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;  
-        
-//    if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
-//        [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
-//        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
-//    }
-  
+    self.selectedRange = selectedNSRange;
+    
+    //    if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
+    //        [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
+    //        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
+    //    }
+    
 }
 
 - (void)deleteBackward  {
@@ -1655,7 +1648,7 @@ static float caretHeight;
     NSRange markedTextRange = self.markedRange;
     
     [_mutableAttributedString setAttributedString:self.attributedString];
-
+    
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
         
         [_mutableAttributedString beginEditing];
@@ -1703,7 +1696,7 @@ static float caretHeight;
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange; 
+    self.selectedRange = selectedNSRange;
     
 }
 
@@ -1731,7 +1724,7 @@ static float caretHeight;
         }
         
     }];
-
+    
     return link;
     
 }
@@ -1744,49 +1737,49 @@ static float caretHeight;
     NSError *error = nil;
 	NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:&error];
 	[linkDetector enumerateMatchesInString:[string string] options:0 range:range usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
-
+        
         if ([result resultType] == NSTextCheckingTypeLink) {
             [string addAttributes:linkAttributes range:[result range]];
         }
-
+        
     }];
- 
+    
     if (![self.attributedString isEqualToAttributedString:string]) {
         self.attributedString = string;
     }
     
 }
 
-- (void)scanAttachments {
-    
-    __block NSMutableAttributedString *mutableAttributedString = nil;
-    
-    [_attributedString enumerateAttribute: EGOTextAttachmentAttributeName inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
-        // we only care when an attachment is set
-        if (value != nil) {
-            // create the mutable version of the string if it's not already there
-            if (mutableAttributedString == nil)
-                mutableAttributedString = [_attributedString mutableCopy];
-            
-            CTRunDelegateCallbacks callbacks = {
-                .version = kCTRunDelegateVersion1,
-                .dealloc = AttachmentRunDelegateDealloc,
-                .getAscent = AttachmentRunDelegateGetDescent,
-                //.getDescent = AttachmentRunDelegateGetDescent,
-                .getWidth = AttachmentRunDelegateGetWidth
-            };
-            
-            // the retain here is balanced by the release in the Dealloc function
-            CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(value));
-            [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: (__bridge id)runDelegate range:range];
-            CFRelease(runDelegate);
-        }
-    }];
-    
-    if (mutableAttributedString) {
-        _attributedString = mutableAttributedString;
-    }
-}
+//- (void)scanAttachments {
+//
+//    __block NSMutableAttributedString *mutableAttributedString = nil;
+//
+//    [_attributedString enumerateAttribute:SFCoreTextImageAttributeKey inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
+//        // we only care when an attachment is set
+//        if (value != nil) {
+//            // create the mutable version of the string if it's not already there
+//            if (mutableAttributedString == nil)
+//                mutableAttributedString = [_attributedString mutableCopy];
+//
+//            CTRunDelegateCallbacks callbacks = {
+//                .version = kCTRunDelegateVersion1,
+//                .dealloc = AttachmentRunDelegateDealloc,
+//                .getAscent = AttachmentRunDelegateGetDescent,
+//                //.getDescent = AttachmentRunDelegateGetDescent,
+//                .getWidth = AttachmentRunDelegateGetWidth
+//            };
+//
+//            // the retain here is balanced by the release in the Dealloc function
+//            CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void *)CFBridgingRetain(value));
+//            [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: (__bridge id)runDelegate range:range];
+//            CFRelease(runDelegate);
+//        }
+//    }];
+//
+//    if (mutableAttributedString) {
+//        _attributedString = mutableAttributedString;
+//    }
+//}
 
 - (BOOL)selectedLinkAtIndex:(NSInteger)index {
     
@@ -1832,7 +1825,7 @@ static float caretHeight;
 - (void)checkSpellingForRange:(NSRange)range {
     
     [_mutableAttributedString setAttributedString:self.attributedString];
-        
+    
     NSInteger location = range.location-1;
     NSInteger currentOffset = MAX(0, location);
     NSRange currentRange;
@@ -1854,10 +1847,10 @@ static float caretHeight;
             done = YES;
             continue;
         }
-
+        
         guesses = [_textChecker guessesForWordRange:currentRange inString:string language:language];
         
-        if (guesses!=nil) {           
+        if (guesses!=nil) {
             [_mutableAttributedString addAttributes:self.correctionAttributes range:currentRange];
         }
         
@@ -1906,7 +1899,7 @@ static float caretHeight;
 }
 
 - (void)longPress:(UILongPressGestureRecognizer*)gesture {
-
+    
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
         
         if (_linkRange.length>0 && gesture.state == UIGestureRecognizerStateBegan) {
@@ -1916,7 +1909,7 @@ static float caretHeight;
             gesture.enabled=YES;
         }
         
-    
+        
         UIMenuController *menuController = [UIMenuController sharedMenuController];
         if ([menuController isMenuVisible]) {
             [menuController setMenuVisible:NO animated:NO];
@@ -1924,7 +1917,7 @@ static float caretHeight;
         
         CGPoint point = [gesture locationInView:self];
         BOOL _selection = (_selectionView!=nil);
-
+        
         if (!_selection && _caretView!=nil) {
             [_caretView show];
         }
@@ -1932,7 +1925,7 @@ static float caretHeight;
         _textWindow = [self egoTextWindow];
         [_textWindow updateWindowTransform];
         [_textWindow setType:_selection ? EGOWindowMagnify : EGOWindowLoupe];
-
+        
         point.y -= 20.0f;
         NSInteger index = [self closestIndexToPoint:point];
         
@@ -1957,9 +1950,9 @@ static float caretHeight;
             } else {
                 
                 NSInteger length = MIN(index-_selectedRange.location, _attributedString.string.length-_selectedRange.location);
-                length = MAX(1, length);                    
+                length = MAX(1, length);
                 self.selectedRange = NSMakeRange(self.selectedRange.location, length);
-                index = (_selectedRange.location+_selectedRange.length); 
+                index = (_selectedRange.location+_selectedRange.length);
                 
             }
             
@@ -1968,7 +1961,7 @@ static float caretHeight;
             if (gesture.state == UIGestureRecognizerStateBegan) {
                 
                 [_textWindow showFromView:_textContentView rect:[_textContentView convertRect:rect toView:_textWindow]];
-
+                
             } else {
                 
                 [_textWindow renderWithContentView:_textContentView fromRect:[_textContentView convertRect:rect toView:_textWindow]];
@@ -2018,7 +2011,7 @@ static float caretHeight;
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
-
+    
     NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
     NSRange range = [self characterRangeAtIndex:index];
     if (range.location!=NSNotFound && range.length>0) {
@@ -2026,21 +2019,21 @@ static float caretHeight;
         [self.inputDelegate selectionWillChange:self];
         self.selectedRange = range;
         [self.inputDelegate selectionDidChange:self];
-
+        
         if (![[UIMenuController sharedMenuController] isMenuVisible]) {
             [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.1f];
         }
-    } 
+    }
     
 }
 
 - (void)tap:(UITapGestureRecognizer*)gesture {
-        
+    
     if (_editable && ![self isFirstResponder]) {
-        [self becomeFirstResponder];  
+        [self becomeFirstResponder];
         return;
     }
-        
+    
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
     
@@ -2059,7 +2052,7 @@ static float caretHeight;
     
     UIMenuController *menuController = [UIMenuController sharedMenuController];
     if ([menuController isMenuVisible]) {
-
+        
         [menuController setMenuVisible:NO animated:NO];
         
     } else {
@@ -2067,11 +2060,11 @@ static float caretHeight;
         if (index==self.selectedRange.location) {
             [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
         } else {
-//            if (_editing) {
-//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-//            }
+            //            if (_editing) {
+            //                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+            //            }
         }
-    
+        
     }
     
     [self.inputDelegate selectionWillChange:self];
@@ -2093,10 +2086,10 @@ static float caretHeight;
     
     if ([gestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]) {
         // 单击 menu不消失
-//        UIMenuController *menuController = [UIMenuController sharedMenuController];
-//        if ([menuController isMenuVisible]) {
-//            [menuController setMenuVisible:NO animated:NO];
-//        }
+        //        UIMenuController *menuController = [UIMenuController sharedMenuController];
+        //        if ([menuController isMenuVisible]) {
+        //            [menuController setMenuVisible:NO animated:NO];
+        //        }
     }
     
     return NO;
@@ -2107,7 +2100,7 @@ static float caretHeight;
     
     if (gestureRecognizer==_longPress) {
         
-        if (_selectedRange.length>0 && _selectionView!=nil) {            
+        if (_selectedRange.length>0 && _selectionView!=nil) {
             return CGRectContainsPoint(CGRectInset([_textContentView convertRect:_selectionView.frame toView:self], -20.0f, -20.0f) , [gestureRecognizer locationInView:self]);
         }
         
@@ -2124,7 +2117,7 @@ static float caretHeight;
 /////////////////////////////////////////////////////////////////////////////
 
 - (void)actionSheet:(UIActionSheet *)actionSheet willDismissWithButtonIndex:(NSInteger)buttonIndex {
-       
+    
     if (actionSheet.cancelButtonIndex != buttonIndex) {
         
         if (_delegateRespondsToDidChange) {
@@ -2140,7 +2133,7 @@ static float caretHeight;
     }
     
     [self setLinkRange:NSMakeRange(NSNotFound, 0)];
-
+    
 }
 
 
@@ -2150,7 +2143,7 @@ static float caretHeight;
 /////////////////////////////////////////////////////////////////////////////
 
 - (BOOL)canBecomeFirstResponder {
-
+    
     if (_editable && _delegateRespondsToShouldBeginEditing) {
         return [self.delegate egoTextViewShouldBeginEditing:self];
     }
@@ -2159,18 +2152,18 @@ static float caretHeight;
 }
 
 - (BOOL)becomeFirstResponder {
-
+    
     if (_editable) {
         
         _editing = YES;
-
+        
         if (_delegateRespondsToDidBeginEditing) {
             [self.delegate egoTextViewDidBeginEditing:self];
         }
         
         [self selectionChanged];
     }
-
+    
     return [super becomeFirstResponder];
 }
 
@@ -2184,11 +2177,11 @@ static float caretHeight;
 }
 
 - (BOOL)resignFirstResponder {
-
+    
     if (_editable) {
         
-        _editing = NO;	
-
+        _editing = NO;
+        
         if (_delegateRespondsToDidEndEditing) {
             [self.delegate egoTextViewDidEndEditing:self];
         }
@@ -2196,7 +2189,7 @@ static float caretHeight;
         [self selectionChanged];
         
     }
-
+    
 	return [super resignFirstResponder];
     
 }
@@ -2223,7 +2216,7 @@ static float caretHeight;
         
         rect = [self firstRectForNSRange:_correctionRange];
         
-    } 
+    }
     
     return rect;
     
@@ -2234,14 +2227,14 @@ static float caretHeight;
     UIMenuController *menuController = [UIMenuController sharedMenuController];
     
     if ([menuController isMenuVisible]) {
-        [menuController setMenuVisible:NO animated:NO]; 
+        [menuController setMenuVisible:NO animated:NO];
     }
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [menuController setMenuItems:nil];
         [menuController setTargetRect:[self menuPresentationRect] inView:self];
         [menuController update];
-        [menuController setMenuVisible:YES animated:YES]; 
+        [menuController setMenuVisible:YES animated:YES];
     });
     
     
@@ -2297,7 +2290,7 @@ static float caretHeight;
     NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
     if (!language) {
         language = @"en_US";
-    }    
+    }
     
     NSArray *guesses = [_textChecker guessesForWordRange:range inString:_attributedString.string language:language];
     
@@ -2316,7 +2309,7 @@ static float caretHeight;
             NSString *selString = [NSString stringWithFormat:@"spellCheckMenu_%i:", [word hash]];
             SEL sel = sel_registerName([selString UTF8String]);
             
-            [self.menuItemActions setObject:word forKey:NSStringFromSelector(sel)]; 
+            [self.menuItemActions setObject:word forKey:NSStringFromSelector(sel)];
             class_addMethod([self class], sel, [[self class] instanceMethodForSelector:@selector(spellingCorrection:)], "v@:@");
             
             UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:word action:sel];
@@ -2354,7 +2347,7 @@ static float caretHeight;
         }
         return NO;
     }
-
+    
     if (action==@selector(cut:)) {
         return (_selectedRange.length>0 && _editing);
     } else if (action==@selector(copy:)) {
@@ -2366,7 +2359,7 @@ static float caretHeight;
     } else if (action == @selector(delete:)) {
         return NO;
     }
-
+    
     return [super canPerformAction:action withSender:sender];
     
 }
@@ -2380,9 +2373,9 @@ static float caretHeight;
     }
     if (replacementRange.location!=NSNotFound && replacementRange.length!=0) {
         NSString *text = [self.menuItemActions objectForKey:NSStringFromSelector(_cmd)];
-        [self.inputDelegate textWillChange:self];       
+        [self.inputDelegate textWillChange:self];
         [self replaceRange:[EGOIndexedRange rangeWithNSRange:replacementRange] withText:text];
-        [self.inputDelegate textDidChange:self];       
+        [self.inputDelegate textDidChange:self];
         replacementRange.length = text.length;
         [self removeCorrectionAttributesForRange:replacementRange];
     }
@@ -2390,11 +2383,11 @@ static float caretHeight;
     self.correctionRange = NSMakeRange(NSNotFound, 0);
     self.menuItemActions = nil;
     [sender setMenuItems:nil];
-
+    
 }
 
 - (void)spellCheckMenuEmpty:(id)sender {
-
+    
     self.correctionRange = NSMakeRange(NSNotFound, 0);
     
 }
@@ -2425,16 +2418,16 @@ static float caretHeight;
     self.selectedRange = [_attributedString.string rangeOfString:trimmedString];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(menuDidHide:) name:UIMenuControllerDidHideMenuNotification object:nil];
-
+    
 }
 
 - (void)select:(id)sender {
-        
+    
     NSRange range = [self characterRangeAtPoint_:_caretView.center];
     self.selectedRange = range;
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(menuDidHide:) name:UIMenuControllerDidHideMenuNotification object:nil];
-
+    
 }
 
 - (void)cut:(id)sender {
@@ -2445,10 +2438,10 @@ static float caretHeight;
     [_mutableAttributedString setAttributedString:self.attributedString];
     [_mutableAttributedString deleteCharactersInRange:_selectedRange];
     
-    [self.inputDelegate textWillChange:self];       
+    [self.inputDelegate textWillChange:self];
     [self setAttributedString:_mutableAttributedString];
     self.selectedRange = NSMakeRange(_selectedRange.location, 0);
-    [self.inputDelegate textDidChange:self];       
+    [self.inputDelegate textDidChange:self];
     
     
 }
@@ -2460,13 +2453,13 @@ static float caretHeight;
 }
 
 - (void)delete:(id)sender {
-        
+    
     [_mutableAttributedString setAttributedString:self.attributedString];
     [_mutableAttributedString deleteCharactersInRange:_selectedRange];
-    [self.inputDelegate textWillChange:self];       
+    [self.inputDelegate textWillChange:self];
     [self setAttributedString:_mutableAttributedString];
     self.selectedRange = NSMakeRange(_selectedRange.location, 0);
-    [self.inputDelegate textDidChange:self];   
+    [self.inputDelegate textDidChange:self];
     
     
 }
@@ -2483,7 +2476,7 @@ static float caretHeight;
 // MARK: EGOIndexedPosition
 /////////////////////////////////////////////////////////////////////////////
 
-@implementation EGOIndexedPosition 
+@implementation EGOIndexedPosition
 @synthesize index=_index;
 
 + (EGOIndexedPosition *)positionWithIndex:(NSUInteger)index {
@@ -2502,7 +2495,7 @@ static float caretHeight;
 // MARK: EGOIndexedRange
 /////////////////////////////////////////////////////////////////////////////
 
-@implementation EGOIndexedRange 
+@implementation EGOIndexedRange
 @synthesize range=_range;
 
 + (EGOIndexedRange *)rangeWithNSRange:(NSRange)theRange {
@@ -2580,7 +2573,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [EGOTextView caretColor];
-    }    
+    }
     return self;
 }
 
@@ -2591,7 +2584,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 }
 
 - (void)didMoveToSuperview {
-
+    
     if (self.superview) {
         
         [self delayBlink];
@@ -2634,7 +2627,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 }
 
 - (void)drawRect:(CGRect)rect {
-
+    
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     
     [[UIImage imageNamed:@"loupe-lo.png"] drawInRect:rect];
@@ -2643,7 +2636,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
         
         CGContextSaveGState(ctx);
         CGContextClipToMask(ctx, rect, [UIImage imageNamed:@"loupe-mask.png"].CGImage);
-        [_contentImage drawInRect:rect];        
+        [_contentImage drawInRect:rect];
         CGContextRestoreGState(ctx);
         
     }
@@ -2655,7 +2648,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 - (void)setContentImage:(UIImage *)image {
     _contentImage = image;
     [self setNeedsDisplay];
-
+    
 }
 
 @end
@@ -2674,7 +2667,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 
 static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
-- (id)initWithFrame:(CGRect)frame {    
+- (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [UIColor clearColor];
         _type = EGOWindowLoupe;
@@ -2687,7 +2680,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 }
 
 - (void)showFromView:(UIView*)view rect:(CGRect)rect {
-        
+    
     CGPoint pos = CGPointMake(CGRectGetMinX(rect), CGRectGetMinY(rect));
     
     if (!_showing) {
@@ -2702,7 +2695,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             [self addSubview:view];
             _view=view;
         }
-                        
+        
         CGRect frame = _view.frame;
         frame.origin.x = floorf(pos.x - (_view.bounds.size.width/2));
         frame.origin.y = floorf(pos.y - _view.bounds.size.height);
@@ -2729,11 +2722,11 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             _view.alpha = 1.0f;
             _view.transform = CGAffineTransformMakeScale(1.0f, 1.0f);
             _view.frame = originFrame;
-
+            
         } completion:^(BOOL finished) {
             
             _showing=YES;
-
+            
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (0.0f*NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [self renderWithContentView:view fromRect:rect];
             });
@@ -2749,7 +2742,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     if ((_view!=nil)) {
         
         [UIView animateWithDuration:kDefaultAnimationDuration animations:^{
-                        
+            
             CGRect frame = _view.frame;
             CGPoint center = _view.center;
             frame.origin.x = floorf(center.x-(frame.size.width/2));
@@ -2758,13 +2751,13 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             _view.transform = CGAffineTransformMakeScale(0.01f, 0.01f);
             
         } completion:^(BOOL finished) {
-
+            
             _showing=NO;
             [_view removeFromSuperview];
             _view=nil;
             self.windowLevel = UIWindowLevelNormal;
             self.hidden = YES;
-
+            
         }];
         
     }
@@ -2778,28 +2771,28 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     offsetRect.origin.y -= _view.bounds.size.height+20.0f;
     offsetRect.origin.x -= (_view.bounds.size.width/2);
     
-    //CGFloat magnifyScale = 1.0f; 
+    //CGFloat magnifyScale = 1.0f;
     
     if (scale) {
         //CGFloat max = 24.0f;
-       // magnifyScale = max/offsetRect.size.height;
-       // NSLog(@"max %f scale %f", max, magnifyScale);
+        // magnifyScale = max/offsetRect.size.height;
+        // NSLog(@"max %f scale %f", max, magnifyScale);
     } else if (rect.size.height < 22.0f) {
         //magnifyScale = 22.0f/offsetRect.size.height;
         //NSLog(@"cale %f", magnifyScale);
     }
-
+    
     UIGraphicsBeginImageContextWithOptions(_view.bounds.size, YES, [[UIScreen mainScreen] scale]);
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-
+    
     CGContextSetFillColorWithColor(ctx, [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:1.0f].CGColor);
     UIRectFill(CGContextGetClipBoundingBox(ctx));
-
+    
     CGContextSaveGState(ctx);
     CGContextTranslateCTM(ctx, 0, view.bounds.size.height);
     CGContextScaleCTM(ctx, 1.0, -1.0);
     
-//    CGContextConcatCTM(ctx, CGAffineTransformMakeScale(magnifyScale, magnifyScale));
+    //    CGContextConcatCTM(ctx, CGAffineTransformMakeScale(magnifyScale, magnifyScale));
     CGContextConcatCTM(ctx, CGAffineTransformMakeTranslation(-(offsetRect.origin.x), offsetRect.origin.y));
     
     UIView *selectionView = nil;
@@ -2828,7 +2821,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     CGContextRestoreGState(ctx);
     UIImage *aImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-
+    
     return aImage;
     
 }
@@ -2842,7 +2835,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         CGRect frame = _view.frame;
         frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2));
         frame.origin.y = floorf(pos.y - _view.bounds.size.height);
-
+        
         if (_type==EGOWindowMagnify) {
             frame.origin.y = MAX(0.0f, frame.origin.y);
             rect = [self convertRect:rect toView:view];
@@ -2851,7 +2844,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             rect = [self convertRect:rect toView:view];
         }
         _view.frame = frame;
-
+        
         UIImage *image = [self screenshotFromCaretFrame:rect inView:view scale:(_type==EGOWindowMagnify)];
         [(EGOLoupeView*)_view setContentImage:image];
         
@@ -2914,7 +2907,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         
         CGContextSaveGState(ctx);
         CGContextClipToMask(ctx, rect, [UIImage imageNamed:@"magnifier-ranged-mask.png"].CGImage);
-        [_contentImage drawInRect:rect];        
+        [_contentImage drawInRect:rect];
         CGContextRestoreGState(ctx);
         
     }
@@ -2941,8 +2934,8 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
-       
-        self.backgroundColor = [UIColor clearColor]; 
+        
+        self.backgroundColor = [UIColor clearColor];
         self.userInteractionEnabled = NO;
         self.layer.geometryFlipped = YES;
         
@@ -2954,15 +2947,15 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     
     if(!self.superview) return;
     
-    self.frame = CGRectMake(begin.origin.x, begin.origin.y + begin.size.height, end.origin.x - begin.origin.x, (end.origin.y-end.size.height)-begin.origin.y);   
+    self.frame = CGRectMake(begin.origin.x, begin.origin.y + begin.size.height, end.origin.x - begin.origin.x, (end.origin.y-end.size.height)-begin.origin.y);
     begin = [self.superview convertRect:begin toView:self];
     end = [self.superview convertRect:end toView:self];
     
-
+    
     if (_leftCaret==nil) {
         UIView *view = [[UIView alloc] initWithFrame:begin];
         view.backgroundColor = [EGOTextView caretColor];
-        [self addSubview:view]; 
+        [self addSubview:view];
         _leftCaret = view;
     }
     
@@ -2996,7 +2989,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     _rightCaret.frame = end;
     _rightDot.frame = CGRectMake(floorf(_rightCaret.center.x - (_rightDot.bounds.size.width/2)), CGRectGetMaxY(_rightCaret.frame), _rightDot.bounds.size.width, _rightDot.bounds.size.height);
     
-
+    
 }
 
 @end
