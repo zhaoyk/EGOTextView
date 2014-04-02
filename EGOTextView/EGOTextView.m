@@ -236,7 +236,6 @@ static float caretHeight;
     [self setText:@""];
     
     EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
-    contentView.autoresizingMask = self.autoresizingMask;
     contentView.delegate = self;
     [self addSubview:contentView];
     _textContentView = contentView;
@@ -2031,7 +2030,7 @@ static float caretHeight;
     
     if (_editable && ![self isFirstResponder]) {
         [self becomeFirstResponder];
-        return;
+//        return;
     }
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
