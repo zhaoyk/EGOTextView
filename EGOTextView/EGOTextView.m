@@ -596,7 +596,7 @@ static float caretHeight;
 }
 
 - (CGSize)imageSizeWithFont:(UIFont *)font {
-    return CGSizeMake([font pointSize], [font pointSize]);
+    return CGSizeMake(font.ascender + ABS(font.descender), font.ascender + ABS(font.descender));
 }
 
 - (NSAttributedString *)parseString:(NSString *)text attribute:(NSDictionary *)attributes {
@@ -811,7 +811,7 @@ static float caretHeight;
                 CTRunGetPositions(run, CFRangeMake(0, 1), &position);
                 
                 CGSize size = [cell size];
-                CGRect rect = { { origins[i].x + position.x + 1, origins[i].y + position.y + cell.descent * 0.5 }, size };
+                CGRect rect = { { origins[i].x + position.x, origins[i].y + position.y + cell.descent }, size };
                 
                 CGContextDrawImage(ctx, rect, cell.image.CGImage);
             }
@@ -1064,8 +1064,8 @@ static float caretHeight;
                 xPos = 0.0f; // empty line
                 
             }
-            
-            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, caretHeight);
+            // descent sometimes 0, sometimes 4; I dont't know why, so all use ABS(self.font.descender)
+            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - ABS(self.font.descender)), 3, caretHeight);
             
         }
         
@@ -1678,12 +1678,18 @@ static float caretHeight;
         
         NSInteger index = MAX(0, selectedNSRange.location-1);
         index = MIN(_attributedString.length-1, index);
-        if ([_attributedString.string characterAtIndex:index] == ' ') {
-            [self performSelector:@selector(showCorrectionMenuWithoutSelection) withObject:nil afterDelay:0.2f];
+        
+        NSString *str = _attributedString.string;
+        unichar lastc = [str characterAtIndex:index];
+        // 是一个 UTF16 高位代理, http://zh.wikipedia.org/wiki/UTF-16
+        if (lastc > 0xDC00 && index > 0) {
+            selectedNSRange.location -= 2;
+            selectedNSRange.length = 2;
+        } else {
+            selectedNSRange.location -= 1;
+            selectedNSRange.length = 1;
         }
         
-        selectedNSRange.location--;
-        selectedNSRange.length = 1;
         
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
